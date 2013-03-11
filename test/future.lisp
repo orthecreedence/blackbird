@@ -1,5 +1,5 @@
-(in-package :cl-async-test)
-(in-suite cl-async-test-core)
+(in-package :cl-async-future-test)
+(in-suite cl-async-future-test)
 
 ;; TODO: finishing, forwarding, error handling, syntax macros, attach with value
 ;; vs future (immediate finish)
