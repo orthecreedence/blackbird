@@ -7,3 +7,15 @@ Documentation for cl-async-future lives on the [cl-async website](http://orthecr
 
 This library will be duplicated in both [cl-async](https://github.com/orthecreedence/cl-async)
 and here until cl-async-future is added to Quicklisp.
+
+Tests
+-----
+The test suite can be run by doing the following:
+
+```common-lisp
+(ql:quickload :cl-async-future-test)
+(cl-async-future-test:run-tests)
+```
+License
+-------
+MIT.
