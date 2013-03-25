@@ -18,7 +18,7 @@
                     callbacks from this future onto the returned one. Allows
                     values to transparently be derived from many layers deep of
                     futures, almost like a real call stack.")
-   (finished :accessor future-finished :initform nil
+   (finished :accessor future-finished :reader future-finished-p :initform nil
     :documentation "Marks if a future has been finished or not.")
    (events :accessor future-events :initform nil
     :documentation "Holds events for this future, to be handled with event-handler.")
@@ -55,7 +55,7 @@
   "Add an error handler for this future. If the errback already exists on this
    future, don't re-add it."
   (when (futurep future)
-    (let ((forwarded-future (lookup-actual-future future)))
+    (let ((forwarded-future (lookup-forwarded-future future)))
       (unless (member errback (future-errbacks future))
         (push errback (future-errbacks forwarded-future))
         (process-errors forwarded-future))))
@@ -78,7 +78,7 @@
   ;; new future for various tasks.
   (setf (future-forward-to future-from) future-to))
 
-(defun lookup-actual-future (future)
+(defun lookup-forwarded-future (future)
   "This function follows forwarded futures until it finds the last in the chain
    of forwarding."
   (when (futurep future)
@@ -99,7 +99,7 @@
   "Signal that an error has happened on a future. If the future has errbacks,
    they will be used to process the error, otherwise it will be stored until an
    errback is added to the future."
-  (let ((forwarded-future (lookup-actual-future future)))
+  (let ((forwarded-future (lookup-forwarded-future future)))
     (push condition (future-events forwarded-future))
     (process-errors forwarded-future)))
 
@@ -139,7 +139,7 @@
    of values (car future-values) OR the future-values will be apply'ed to cb."
   (let* ((future future-values)
          (future (if (futurep future)
-                     (lookup-actual-future future)  ; follow forwarded futures
+                     (lookup-forwarded-future future)  ; follow forwarded futures
                      (car future-values)))
          (cb-return-future (make-future))
          (cb-wrapped (lambda (&rest args)

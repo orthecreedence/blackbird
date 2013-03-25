@@ -2,8 +2,10 @@
   (:use :cl)
   (:nicknames :asf)
   (:export #:future
+           #:future-finished-p
            #:make-future
            #:attach-errback
+           #:lookup-forwarded-future
            #:signal-error
            #:futurep
            #:finish
