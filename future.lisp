@@ -31,11 +31,11 @@
      be called with the computed value(s) when ready."))
 
 (defmethod print-object ((future future) s)
-  (format s "#<Future (~s callbacks) (errbacks: ~s) (finished: ~a) (forward: ~a)>"
-          (length (future-callbacks future))
-          (length (future-errbacks future))
-          (future-finished future)
-          (not (not (future-forward-to future)))))
+  (print-unreadable-object (future s :type t :identity t)
+    (format s "~_callback(s): ~s " (length (future-callbacks future)))
+    (format s "~_errback(s): ~s " (length (future-errbacks future)))
+    (format s "~_finished: ~a " (future-finished future))
+    (format s "~_forward: ~a" (not (not (future-forward-to future))))))
 
 (defun make-future (&key preserve-callbacks (reattach-callbacks t))
   "Create a blank future."
