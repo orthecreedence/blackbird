@@ -283,10 +283,7 @@
                    `(setf ,b (car ,args)
                           ,args (cdr ,args))))
            ;; wrap in another let in case users want to add their own declare
-           (let (,@(loop for b in bindings
-                         unless (member b ignore-bindings)
-                         collect (list b b)))
-             ,@body))))))
+           (locally ,@body))))))
 
 (defmacro wait-for (future-gen &body body)
   "Wait for a future to finish, ignoring any values it returns. Can be useful
