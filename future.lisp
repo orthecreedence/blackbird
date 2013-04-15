@@ -139,8 +139,11 @@
    of values (car future-values) OR the future-values will be apply'ed to cb."
   (let* ((future future-values)
          (future (if (futurep future)
-                     (lookup-forwarded-future future)  ; follow forwarded futures
+                     future
                      (car future-values)))
+         (future (if (futurep future)
+                     (lookup-forwarded-future future)  ; follow forwarded futures
+                     future))
          (cb-return-future (make-future))
          (cb-wrapped (lambda (&rest args)
                        (let ((cb-return (multiple-value-list (apply cb args))))
