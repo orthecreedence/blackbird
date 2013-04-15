@@ -223,10 +223,7 @@
            ,(when ignore-bindings
               `(declare (ignore ,@ignore-bindings)))
            ;; wrap body in let form which allows (declare ...)
-           (let (,@(loop for b in bind-vars
-                         unless (member b ignore-bindings)
-                         collect (list b b)))
-             ,@body))))))
+           (locally ,@body))))))
 
 (defmacro alet* (bindings &body body)
   "Asynchronous let*. Allows calculating a number of values in sequence via
@@ -245,10 +242,7 @@
                                        (push ignore-sym ignore-bindings)
                                        (list ignore-sym form)))))
          ;; wrap body in let form which allows (declare ...)
-         (body-form `(let (,@(loop for (b nil) in bindings
-                                   unless (member b ignore-bindings)
-                                   collect (list b b)))
-                       ,@body)))
+         (body-form `(locally ,@body)))
     ;; loop over bindings in reverse and build a nested list into the body-form
     ;; variable
     (dolist (binding (reverse bindings))
