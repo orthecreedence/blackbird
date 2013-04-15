@@ -220,13 +220,10 @@
        ;; gets events forwarded to it from the binding futures.
        (attach ,finished-future
          (lambda ,bind-vars
-           ,(when ignore-bindings
-              `(declare (ignore ,@ignore-bindings)))
-           ;; wrap body in let form which allows (declare ...)
-           (let (,@(loop for b in bind-vars
-                         unless (member b ignore-bindings)
-                         collect (list b b)))
-             ,@body))))))
+           ,@(progn
+               (when ignore-bindings
+                 (push `(declare (ignore ,@ignore-bindings)) body))
+               body))))))
 
 (defmacro alet* (bindings &body body)
   "Asynchronous let*. Allows calculating a number of values in sequence via
