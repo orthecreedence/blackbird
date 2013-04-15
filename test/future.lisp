@@ -133,3 +133,12 @@
     (is (subtypep (type-of err1) 'type-error))
     (is (subtypep (type-of err2) 'test-error-lol))))
 
+(test forwarding
+  "Test future forwarding"
+  (flet ((get-val ()
+           (alet ((x 4))
+             (alet ((y (+ x 4)))
+               (+ x y)))))
+    (alet ((res (get-val)))
+      (is (= res 12)))))
+
