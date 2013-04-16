@@ -245,8 +245,7 @@
                                        (push ignore-sym ignore-bindings)
                                        (list ignore-sym form)))))
          ;; wrap body in let form which allows (declare ...)
-         (body-form `(,@body))
-         (is-first t))
+         (body-form body))
     ;; loop over bindings in reverse and build a nested list into the body-form
     ;; variable
     (dolist (binding (reverse bindings))
@@ -254,17 +253,14 @@
             (future (cadr binding))
             (args (gensym "args")))
         (setf body-form
-              `(attach ,future
-                 (lambda (&rest ,args)
-                   (let ((,bind (car ,args)))
-                     ,@(progn
-                         (when (member bind ignore-bindings)
-                           (push `(declare (ignore ,bind)) body-form))
-                         (unless is-first
-                           (setf body-form (list body-form)))
-                         (setf is-first nil)
-                         body-form)))))))
-    body-form))
+              `((attach ,future
+                  (lambda (&rest ,args)
+                    (let ((,bind (car ,args)))
+                      ,@(progn
+                          (when (member bind ignore-bindings)
+                            (push `(declare (ignore ,bind)) body-form))
+                          body-form))))))))
+    (car body-form)))
 
 (defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
   "Like multiple-value-bind, but instead of a form that evaluates to multiple
