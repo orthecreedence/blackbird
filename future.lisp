@@ -141,7 +141,7 @@
           (future-errbacks future) nil
           (future-events future) nil
           (future-values future) nil
-          (future-finished future nil)))
+          (future-finished future) nil))
   future)
 
 (defun attach-cb (future-values cb)
