@@ -134,6 +134,16 @@
                  (future-values future) values)
            (run-future future)))))
 
+(defun reset-future (future)
+  "Clear out all callbacks/errbacks. Useful for halting a future's execution."
+  (let ((future (lookup-forwarded-future future)))
+    (setf (future-callbacks future) nil
+          (future-errbacks future) nil
+          (future-events future) nil
+          (future-values future) nil
+          (future-finished future nil)))
+  future)
+
 (defun attach-cb (future-values cb)
   "Attach a callback to a future. The future must be the first value in a list
    of values (car future-values) OR the future-values will be apply'ed to cb."

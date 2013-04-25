@@ -9,6 +9,7 @@
            #:signal-error
            #:futurep
            #:finish
+           #:reset-future
            #:attach
            #:alet
            #:alet*
