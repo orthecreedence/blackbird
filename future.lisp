@@ -219,9 +219,6 @@
        ;; future "finished-future" is triggered, which runs the body
        ,@(loop for (bind form) in bindings collect
            `(let ((future-gen (multiple-value-list ,form)))
-              ;; forward events we get on this future to the finalizing future.
-              (attach-errback (car future-gen)
-                (lambda (ev) (signal-error ,finished-future ev)))
               ;; when this future finishes, call the finished-cb, which tallies
               ;; up the number of finishes until it equals the number of
               ;; bindings.
