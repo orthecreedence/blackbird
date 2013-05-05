@@ -56,7 +56,7 @@
    future, don't re-add it."
   (when (futurep future)
     (let ((forwarded-future (lookup-forwarded-future future)))
-      (unless (member errback (future-errbacks future))
+      (unless (member errback (future-errbacks forwarded-future))
         (push errback (future-errbacks forwarded-future))
         (process-errors forwarded-future))))
   future)
