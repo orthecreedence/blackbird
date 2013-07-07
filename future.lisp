@@ -269,6 +269,17 @@
                           body-form))))))))
     (car body-form)))
 
+(defmacro aif (future-gen true-form false-form)
+  "Acts like `if` except that the evaluated form accepts a future:
+     (aif (async-action)
+          (it-worked!)
+          (nope-sad-face))"
+  (let ((bind (gensym "aif-res")))
+    `(alet ((,bind ,future-gen))
+       (if ,bind
+           ,true-form
+           ,false-form))))
+
 (defmacro multiple-future-bind ((&rest bindings) future-gen &body body)
   "Like multiple-value-bind, but instead of a form that evaluates to multiple
    values, takes a form that generates a future."
@@ -389,4 +400,5 @@
                       ,env)))
            ,body-form)
        ,@error-forms)))
+
 

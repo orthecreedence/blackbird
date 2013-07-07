@@ -13,6 +13,7 @@
            #:attach
            #:alet
            #:alet*
+           #:aif
            #:multiple-future-bind
            #:wait-for
            #:future-handler-case))
