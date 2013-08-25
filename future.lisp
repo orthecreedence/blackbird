@@ -196,12 +196,14 @@
                                              igsym))
                                        form)))
          (bind-vars (loop for (bind nil) in bindings collect bind))
-         (num-bindings (length bindings))
+         (num-bindings (gensym "num-bindings"))
          (finished-future (gensym "finished-future"))
          (finished-vals (gensym "finished-vals"))
          (finished-cb (gensym "finished-cb"))
+         (inc-value (gensym "inc-value"))
          (args (gensym "args")))
-    `(let* ((,finished-future (make-future))
+    `(let* ((,num-bindings ,(length bindings)) ; make a local var for num-bindings
+            (,finished-future (make-future))
             (,finished-vals nil)
             (,finished-cb
               ;; the hash table makes sure that *all* futures have fires at
@@ -210,7 +212,12 @@
               ;; brethren get a chance to finish.
               (let ((track-future-fired (make-hash-table :test #'eq :size ,num-bindings)))
                 (lambda (future)
-                  (setf (gethash future track-future-fired) t)
+                  (if (futurep future)
+                      ;; mark this future as finished in the tracking has
+                      (setf (gethash future track-future-fired) t)
+                      ;; this is a plain old value, not a future. decread the
+                      ;; num-bindings to take account
+                      (decf ,num-bindings))
                   (when (<= ,num-bindings (hash-table-count track-future-fired))
                     (let ((vars (loop for bind in ',bind-vars collect (getf ,finished-vals bind))))
                       (apply #'finish (append (list ,finished-future) vars))))))))
