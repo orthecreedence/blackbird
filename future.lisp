@@ -99,6 +99,9 @@
   "Signal that an error has happened on a future. If the future has errbacks,
    they will be used to process the error, otherwise it will be stored until an
    errback is added to the future."
+  ;; if we're debugging just throw the error
+  (when (find :future-debug *features*)
+    (error condition))
   (let ((forwarded-future (lookup-forwarded-future future)))
     (push condition (future-events forwarded-future))
     (process-errors forwarded-future)))
@@ -387,25 +390,30 @@
    
    Note that we only have to wrap (attach) because *all other syntax macros* use
    attach. This greatly simplifies our code."
-  ;; save the original ttach macro function so is isn't overwritten by macrolet,
-  ;; the slithering scope-stealing snake. if future-handler-case is called
-  ;; inside another future-handler-case, these "attach-orig" function will be
-  ;; bound to the wrapping macrolet form instead of the top-level macros, which
-  ;; is perfect because we want to wrap the forms multiple times.
-  (let ((attach-orig (macro-function 'attach env)))
-    ;; wrap the top-level form in a handler-case to catch any errors we may have
-    ;; before the futures are even generated.
-    `(handler-case
-       ;; redefine our attach macro so that the future-gen forms are
-       ;; wrapped (recursively, if called more than once) in the
-       ;; `wrap-event-handler` macro.
-       (macrolet ((attach (future-gen fn)
-                    (funcall ,attach-orig
-                      `(attach
-                         (wrap-event-handler ,future-gen ,',error-forms)
-                         ,fn)
-                      ,env)))
-           ,body-form)
-       ,@error-forms)))
+  (if (find :future-debug *features*)
+      ;; we're debugging futures...disable all error handling (so errors bubble
+      ;; up to main loop)
+      body-form
+      ;; save the original ttach macro function so is isn't overwritten by
+      ;; macrolet, the slithering scope-stealing snake. if future-handler-case
+      ;; is called inside another future-handler-case, these "attach-orig"
+      ;; function will be bound to the wrapping macrolet form instead of the
+      ;; top-level macros, which is perfect because we want to wrap the forms
+      ;; multiple times.
+      (let ((attach-orig (macro-function 'attach env)))
+        ;; wrap the top-level form in a handler-case to catch any errors we may
+        ;; have before the futures are even generated.
+        `(handler-case
+           ;; redefine our attach macro so that the future-gen forms are
+           ;; wrapped (recursively, if called more than once) in the
+           ;; `wrap-event-handler` macro.
+           (macrolet ((attach (future-gen fn)
+                        (funcall ,attach-orig
+                          `(attach
+                             (wrap-event-handler ,future-gen ,',error-forms)
+                             ,fn)
+                          ,env)))
+               ,body-form)
+           ,@error-forms))))
 
 
