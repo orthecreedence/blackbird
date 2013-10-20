@@ -331,6 +331,28 @@
          (declare (ignore ,ignore-var))
          ,@body))))
 
+(defmacro adolist ((item items &optional future-bind) &body body)
+  "Async version of dolist, only continues loop when future in final form
+   finishes with a value."
+  (let ((items-sym (gensym "items"))
+        (future-sym (gensym "future"))
+        (next-fn (gensym "next-fn")))
+    `(let ((,items-sym ,items)
+           (,future-sym (make-future)))
+       (labels ((,next-fn ()
+                  (let ((,item (car ,items-sym)))
+                    (unless ,item
+                      (finish ,future-sym nil)
+                      (return-from ,next-fn))
+                    (setf ,items-sym (cdr ,items-sym))
+                    ,(if future-bind
+                         `(let ((,future-bind (make-future)))
+                            (wait-for ,future-bind (,next-fn))
+                            ,@body)
+                         `(wait-for (progn ,@body) (,next-fn))))))
+         (,next-fn))
+       ,future-sym)))
+
 (defmacro wrap-event-handler (future-gen error-forms)
   "Used to wrap the future-generation forms of future syntax macros. This macro
    is not to be used directly, but instead by future-handler-case.

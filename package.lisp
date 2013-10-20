@@ -16,5 +16,6 @@
            #:aif
            #:multiple-future-bind
            #:wait-for
+           #:adolist
            #:future-handler-case))
 
