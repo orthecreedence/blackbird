@@ -430,11 +430,17 @@
            ;; wrapped (recursively, if called more than once) in the
            ;; `wrap-event-handler` macro.
            (macrolet ((attach (future-gen fn)
-                        (funcall ,attach-orig
-                          `(attach
-                             (wrap-event-handler ,future-gen ,',error-forms)
-                             ,fn)
-                          ,env)))
+                        (let ((args (gensym "fhc-wrap-args")))
+                          `,(funcall ,attach-orig
+                              `(attach
+                                 (wrap-event-handler ,future-gen ,',error-forms)
+                                 ;; create a wrapper function around the given
+                                 ;; callback that applies our error handlers
+                                 (lambda (&rest ,args)
+                                   (handler-case
+                                     (apply ,fn ,args)
+                                     ,',@error-forms)))
+                              ,env))))
                ,body-form)
            ,@error-forms))))
 
