@@ -431,16 +431,16 @@
            ;; `wrap-event-handler` macro.
            (macrolet ((attach (future-gen fn)
                         (let ((args (gensym "fhc-wrap-args")))
-                          `,(funcall ,attach-orig
-                              `(attach
-                                 (wrap-event-handler ,future-gen ,',error-forms)
-                                 ;; create a wrapper function around the given
-                                 ;; callback that applies our error handlers
-                                 (lambda (&rest ,args)
-                                   (handler-case
-                                     (apply ,fn ,args)
-                                     ,',@error-forms)))
-                              ,env))))
+                          (funcall ,attach-orig
+                            `(attach
+                               (wrap-event-handler ,future-gen ,',error-forms)
+                               ;; create a wrapper function around the given
+                               ;; callback that applies our error handlers
+                               (lambda (&rest ,args)
+                                 (handler-case
+                                   (apply ,fn ,args)
+                                   ,',@error-forms)))
+                            ,env))))
                ,body-form)
            ,@error-forms))))
 
