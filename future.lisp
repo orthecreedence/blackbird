@@ -439,7 +439,7 @@
                                (lambda (&rest ,args)
                                  (handler-case
                                    (apply ,fn ,args)
-                                   ,',@error-forms)))
+                                   ,@',error-forms)))
                             ,env))))
                ,body-form)
            ,@error-forms))))
