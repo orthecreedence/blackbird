@@ -345,11 +345,13 @@
                       (finish ,future-sym nil)
                       (return-from ,next-fn))
                     (setf ,items-sym (cdr ,items-sym))
-                    ,(if future-bind
-                         `(let ((,future-bind (make-future)))
-                            (wait-for ,future-bind (,next-fn))
-                            ,@body)
-                         `(wait-for (progn ,@body) (,next-fn))))))
+                    (future-handler-case
+                      ,(if future-bind
+                           `(let ((,future-bind (make-future)))
+                              (wait-for ,future-bind (,next-fn))
+                              ,@body)
+                           `(attach (progn ,@body) (lambda () (next-fn))))
+                      (t (e) (signal-error ,future-sym e))))))
          (,next-fn))
        ,future-sym)))
 
