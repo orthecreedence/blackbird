@@ -350,7 +350,7 @@
                            `(let ((,future-bind (make-future)))
                               (wait-for ,future-bind (,next-fn))
                               ,@body)
-                           `(attach (progn ,@body) (lambda () (next-fn))))
+                           `(wait-for (progn ,@body) (,next-fn)))
                       (t (e) (signal-error ,future-sym e))))))
          (,next-fn))
        ,future-sym)))
