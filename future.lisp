@@ -177,7 +177,7 @@
    account, which a simple function cannot)."
   (let ((future-values (gensym "future-values")))
     `(let ((,future-values (multiple-value-list ,future-gen)))
-       (cl-async-future::attach-cb ,future-values ,cb))))
+       (attach-cb ,future-values ,cb))))
 
 ;; -----------------------------------------------------------------------------
 ;; start our syntactic abstraction section (rolls off the tongue nicely)
@@ -355,6 +355,11 @@
          (,next-fn))
        ,future-sym)))
 
+(defmacro %handler-case (body &rest bindings)
+  "Simple wrapper around handler-case that allows switching out the form to make
+   macroexpansion a lot easier to deal with."
+  `(handler-case ,body ,@bindings))
+
 (defmacro wrap-event-handler (future-gen error-forms)
   "Used to wrap the future-generation forms of future syntax macros. This macro
    is not to be used directly, but instead by future-handler-case.
@@ -382,10 +387,12 @@
                        ;; error triggering function and the error handler one level
                        ;; up. this preserves the handler-case tree (as opposed to
                        ;; reversing it)
+                       ;; NOTE that signal-error is defined *below* in the body
+                       ;; of the macrolet form
                        (let ((,old-signal-error ,',signal-error))
                          (setf ,',signal-error
                                (lambda (ev)
-                                 (handler-case
+                                 (%handler-case
                                    (funcall ,old-signal-error ev)
                                    ,@error-forms))))
                        ;; return the future-gen form verbatim
@@ -396,7 +403,7 @@
        ;; its error handler between handler-fn and signal-error.
        (let* ((,signal-error (lambda (ev) (error ev)))
               (,handler-fn (lambda (ev)
-                             (handler-case
+                             (%handler-case
                                (funcall ,signal-error ev)
                                ,@error-forms)))
               ;; sub (wrap-event-handler ...) forms are expanded with ,future-gen
@@ -418,32 +425,27 @@
       ;; we're debugging futures...disable all error handling (so errors bubble
       ;; up to main loop)
       body-form
-      ;; save the original ttach macro function so is isn't overwritten by
-      ;; macrolet, the slithering scope-stealing snake. if future-handler-case
-      ;; is called inside another future-handler-case, these "attach-orig"
-      ;; function will be bound to the wrapping macrolet form instead of the
-      ;; top-level macros, which is perfect because we want to wrap the forms
-      ;; multiple times.
-      (let ((attach-orig (macro-function 'attach env)))
-        ;; wrap the top-level form in a handler-case to catch any errors we may
-        ;; have before the futures are even generated.
-        `(handler-case
-           ;; redefine our attach macro so that the future-gen forms are
-           ;; wrapped (recursively, if called more than once) in the
-           ;; `wrap-event-handler` macro.
-           (macrolet ((attach (future-gen fn)
-                        (let ((args (gensym "fhc-wrap-args")))
-                          (funcall ,attach-orig
-                            `(attach
-                               (wrap-event-handler ,future-gen ,',error-forms)
-                               ;; create a wrapper function around the given
-                               ;; callback that applies our error handlers
-                               (lambda (&rest ,args)
-                                 (handler-case
-                                   (apply ,fn ,args)
-                                   ,@',error-forms)))
-                            ,env))))
-               ,body-form)
-           ,@error-forms))))
-
+      ;; wrap the top-level form in a handler-case to catch any errors we may
+      ;; have before the futures are even generated.
+      `(%handler-case
+         ;; redefine our attach macro so that the future-gen forms are
+         ;; wrapped (recursively, if called more than once) in the
+         ;; `wrap-event-handler` macro.
+         (macrolet ((attach (future-gen fn)
+                      (let ((args (gensym "fhc-wrap-args")))
+                        ;; call the original attach macro (via our pass env).
+                        ;; this allows calling it without throwing macrolet
+                        ;; into an endless loop
+                        (funcall (macro-function 'attach ,env)
+                          `(attach
+                             (wrap-event-handler ,future-gen ,',error-forms)
+                             ;; create a wrapper function around the given
+                             ;; callback that applies our error handlers
+                             (lambda (&rest ,args)
+                               (%handler-case
+                                 (apply ,fn ,args)
+                                 ,@',error-forms)))
+                          ,env))))
+             ,body-form)
+         ,@error-forms)))
 

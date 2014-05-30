@@ -60,7 +60,7 @@
                  (y (future-gen 2)))
             (setf val-x x
                   val-y y)))
-      (is (<= .19 (/ (- (get-internal-real-time) time-start) internal-time-units-per-second) .21))
+      (is (<= .19 (/ (- (get-internal-real-time) time-start) internal-time-units-per-second) .22))
       (is (= val-x 5))
       (is (= val-y 2)))))
 
