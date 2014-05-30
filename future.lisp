@@ -431,12 +431,12 @@
          ;; redefine our attach macro so that the future-gen forms are
          ;; wrapped (recursively, if called more than once) in the
          ;; `wrap-event-handler` macro.
-         (macrolet ((attach (future-gen fn)
+         (macrolet ((attach (future-gen fn &environment ml-env)
                       (let ((args (gensym "fhc-wrap-args")))
                         ;; call the original attach macro (via our pass env).
                         ;; this allows calling it without throwing macrolet
                         ;; into an endless loop
-                        (funcall (macro-function 'attach ,env)
+                        (funcall (macro-function 'attach ',env)
                           `(attach
                              (wrap-event-handler ,future-gen ,',error-forms)
                              ;; create a wrapper function around the given
@@ -445,7 +445,7 @@
                                (%handler-case
                                  (apply ,fn ,args)
                                  ,@',error-forms)))
-                          ,env))))
+                          ml-env))))
              ,body-form)
          ,@error-forms)))
 
