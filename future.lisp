@@ -420,7 +420,16 @@
    less restricted to the form it's run in.
    
    Note that we only have to wrap (attach) because *all other syntax macros* use
-   attach. This greatly simplifies our code."
+   attach. This greatly simplifies our code.
+
+   Note that if we just wrap `attach` directly in a macrolet, it expands
+   infinitely (probably no what we want). So we're doing some trickery here. We
+   use the environment from the top-level macro to grab the original macro
+   function and make it available from *within* the macrolet. This allows
+   the macrolet to redefine the `attach` macro while also simultaneously
+   expanding the previous definition of it. This allows wrapped calls of
+   future-handler-case to add layers of error handling around any `attach` call
+   that is within lexical grasp."
   (if (find :future-debug *features*)
       ;; we're debugging futures...disable all error handling (so errors bubble
       ;; up to main loop)
