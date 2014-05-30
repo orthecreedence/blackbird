@@ -34,3 +34,4 @@
   
 ;; define the test suite
 (def-suite cl-async-future-test :description "cl-async-future test suite")
+

@@ -142,3 +142,43 @@
     (alet ((res (get-val)))
       (is (= res 12)))))
 
+
+;; -----------------------------------------------------------------------------
+;; test error propagation
+;; -----------------------------------------------------------------------------
+
+(defun fdelay (val)
+  (let ((future (make-future)))
+    (finish future (+ val 1))
+    future))
+
+(defmacro defafun (name (future-bind) args &body body)
+  `(defun ,name ,args
+     (let ((,future-bind (make-future)))
+       (future-handler-case
+         (progn ,@body)
+         (t (e)
+           (signal-error ,future-bind e)))
+       ,future-bind)))
+
+(defafun async2 (future) (a)
+  (alet* ((z (fdelay a))
+          (b (+ z 1)))
+    (finish future (+ b "5"))))
+
+(defafun async1 (future) (a)
+  (alet* ((x (fdelay a))
+          (y (async2 x)))
+    (finish future y)))
+
+(test error-propagation
+  "Test error propagation"
+  (let ((error-triggered nil))
+    (future-handler-case
+      (wait-for (async1 1)
+        (setf error-triggered nil))
+      (t (e)
+        (setf error-triggered t)
+        (is (typep e 'type-error))))
+    (is (eq error-triggered t))))
+
