@@ -147,6 +147,10 @@
 ;; test error propagation
 ;; -----------------------------------------------------------------------------
 
+(define-condition future-error (type-error)
+  ((msg :initarg :msg :reader future-errmsg :initform nil))
+  (:report (lambda (c s) (format s "Error event: ~a" (future-errmsg c)))))
+
 (defun fdelay (val)
   (let ((future (make-future)))
     (finish future (+ val 1))
@@ -164,7 +168,8 @@
 (defafun async2 (future) (a)
   (alet* ((z (fdelay a))
           (b (+ z 1)))
-    (finish future (+ b "5"))))
+    (error 'future-error :msg "\"5\" is no expected type NUMBER")
+    (finish future (+ b 6))))
 
 (defafun async1 (future) (a)
   (alet* ((x (fdelay a))
