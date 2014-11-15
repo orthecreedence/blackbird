@@ -122,7 +122,7 @@ will be able to use promises to provide an interface that makes its users feel
 less like they are programming javascript and more like programming lisp.
 
 ### Promise package
-The promises implementation exists under the `cl-async-promise` package (`asf`)
+The promises implementation exists under the `cl-async-promise` package (`bb`)
 for short. This allows an application to import `cl-async-promise` into a `:use`
 clause in order to gain easy access to the syntax macros, but without importing
 all of cl-async as well.
