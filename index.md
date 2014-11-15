@@ -3,7 +3,7 @@ title: Promises | Documentation
 layout: documentation
 ---
 
-BLackbird
+Blackbird
 =========
 
 Blackbird is a promise implementation for Common Lisp. Its purpose is to make
