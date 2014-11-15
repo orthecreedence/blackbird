@@ -1,7 +1,7 @@
-(defpackage :cl-async-future-test
-  (:use :cl :eos :cl-async-base :cl-async-util :cl-async-future)
+(defpackage :blackbird-test
+  (:use :cl :eos :cl-async-base :cl-async-util :blackbird)
   (:export #:run-tests))
-(in-package :cl-async-future-test)
+(in-package :blackbird-test)
 
 ;; TODO: test all functions in util package
 
@@ -33,5 +33,5 @@
   val)
   
 ;; define the test suite
-(def-suite cl-async-future-test :description "cl-async-future test suite")
+(def-suite blackbird-test :description "blackbird test suite")
 

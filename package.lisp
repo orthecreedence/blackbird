@@ -1,21 +1,32 @@
-(defpackage :cl-async-future
+(defpackage :blackbird
   (:use :cl)
-  (:nicknames :asf)
-  (:export #:future
-           #:future-finished-p
-           #:make-future
+  (:nicknames :asf :bb)
+  (:export #:promise
+           #:promise-finished-p
+           #:make-promise
            #:attach-errback
-           #:lookup-forwarded-future
+           #:lookup-forwarded-promise
            #:signal-error
-           #:futurep
+           #:promisep
            #:finish
-           #:reset-future
+           #:reset-promise
            #:attach
            #:alet
            #:alet*
            #:aif
-           #:multiple-future-bind
-           #:wait-for
+           #:multiple-promise-bind
+           #:wait
            #:adolist
-           #:future-handler-case))
+           #:promise-handler-case
+    
+           ;; cl-async-future compatibility classes/functions/macros
+           #:future
+           #:future-finished-p
+           #:make-future
+           #:lookup-forwarded-future
+           #:futurep
+           #:reset-future
+           #:multiple-future-bind
+           #:future-handler-case
+           #:wait-for))
 

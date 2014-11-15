@@ -1,13 +1,13 @@
-(asdf:defsystem cl-async-future-test
+(asdf:defsystem blackbird-test
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
   :version "0.2"
-  :description "TESTS FOR cl-async-future."
-  :depends-on (#:cl-async #:cl-async-future #:eos)
+  :description "TESTS FOR blackbird."
+  :depends-on (#:cl-async #:blackbird #:eos)
   :components
   ((:module test
     :serial t
     :components ((:file "util")
-                 (:file "future")
+                 (:file "promise")
                  (:file "run")))))
 

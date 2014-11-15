@@ -1,20 +1,26 @@
-cl-async-future
-===============
-This is a standalone library for futures in Common Lisp that was originally part
-of [cl-async](https://github.com/orthecreedence/cl-async).
+blackbird
+=========
+A standalone promise implementation for Common Lisp. This is the successor to
+the now-deprecated cl-async-future project.
+
+Its goal is to provide an abstraction around synchronous and asynchronous code
+in a way that's natural to regular lisp programming. This is ideal for both
+writing drivers that can handle both blocking and non-blocking sockets, as well
+as various threading operations that have the concept of a delayed result.
 
 [Documentation](http://orthecreedence.github.com/cl-async/future)
 -----------------------------------------------------------------
-Documentation for cl-async-future lives on the [cl-async website](http://orthecreedence.github.com/cl-async/future).
+Documentation for blackbird lives on the [cl-async website](http://orthecreedence.github.com/cl-async/future).
 
 Tests
 -----
 The test suite can be run by doing the following:
 
 ```common-lisp
-(ql:quickload :cl-async-future-test)
-(cl-async-future-test:run-tests)
+(ql:quickload :blackbird-test)
+(blackbird-test:run-tests)
 ```
+
 License
 -------
 MIT.

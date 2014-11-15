@@ -1,4 +1,4 @@
-(in-package :cl-async-future-test)
+(in-package :blackbird-test)
 
 (defun run-tests ()
-  (run! 'cl-async-future-test))
+  (run! 'blackbird-test))

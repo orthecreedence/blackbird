@@ -1,78 +1,78 @@
-(in-package :cl-async-future-test)
-(in-suite cl-async-future-test)
+(in-package :blackbird-test)
+(in-suite blackbird-test)
 
 ;; TODO: finishing, forwarding, error handling, syntax macros, attach with value
-;; vs future (immediate finish)
+;; vs promise (immediate finish)
 
-(test make-future
-  "Test that make-future returns a future, also test futurep"
-  (is (futurep (make-future)))
-  (is (futurep (make-future :preserve-callbacks t :reattach-callbacks nil)))
-  (is (not (futurep 'hai)))
-  (is (not (futurep "omg, WHERE did you get those shoes?!")))
-  (is (not (futurep nil))))
+(test make-promise
+  "Test that make-promise returns a promise, also test promisep"
+  (is (promisep (make-promise)))
+  (is (promisep (make-promise :preserve-callbacks t :reattach-callbacks nil)))
+  (is (not (promisep 'hai)))
+  (is (not (promisep "omg, WHERE did you get those shoes?!")))
+  (is (not (promisep nil))))
 
-(test future-callbacks
-  "Test that finishing a future fires its callbacks, also test multiple callbacks"
-  (let ((future (make-future))
+(test promise-callbacks
+  "Test that finishing a promise fires its callbacks, also test multiple callbacks"
+  (let ((promise (make-promise))
         (res1 nil)
         (res2 nil))
-    (attach future
+    (attach promise
       (lambda (x)
         (setf res1 (+ 3 x))))
-    (attach future
+    (attach promise
       (lambda (x)
         (setf res2 (+ 7 x))))
-    (finish future 5)
+    (finish promise 5)
     (is (= res1 8))
     (is (= res2 12))))
 
-(test future-errbacks
+(test promise-errbacks
   "Test that errbacks are fired (also test multiple errbacks)"
-  (let ((future (make-future))
+  (let ((promise (make-promise))
         (fired1 nil)
         (fired2 nil))
-    (attach-errback future
+    (attach-errback promise
       (lambda (ev)
         (setf fired1 ev)))
-    (attach-errback future
+    (attach-errback promise
       (lambda (ev)
         (setf fired2 ev)))
-    (signal-error future 'omg-lol-wtf)
+    (signal-error promise 'omg-lol-wtf)
     (is (eq fired1 'omg-lol-wtf))
     (is (eq fired2 'omg-lol-wtf))))
 
-(defun future-gen (&rest vals)
-  (let ((future (make-future)))
-    (as:delay (lambda () (apply #'finish (append (list future) vals)))
+(defun promise-gen (&rest vals)
+  (let ((promise (make-promise)))
+    (as:delay (lambda () (apply #'finish (append (list promise) vals)))
               :time .2
-              :event-cb (lambda (ev) (signal-error future ev)))
-    future))
+              :event-cb (lambda (ev) (signal-error promise ev)))
+    promise))
 
-(test future-alet
+(test promise-alet
   "Test that the alet macro functions correctly"
   (let ((time-start nil))  ; tests that alet bindings happen in parallel
     (multiple-value-bind (val-x val-y)
         (async-let ((val-x nil)
                     (val-y nil))
           (setf time-start (get-internal-real-time))
-          (alet ((x (future-gen 5))
-                 (y (future-gen 2)))
+          (alet ((x (promise-gen 5))
+                 (y (promise-gen 2)))
             (setf val-x x
                   val-y y)))
       (is (<= .19 (/ (- (get-internal-real-time) time-start) internal-time-units-per-second) .22))
       (is (= val-x 5))
       (is (= val-y 2)))))
 
-(test future-alet*
+(test promise-alet*
   "Test that the alet* macro functions correctly"
   (let ((time-start nil))  ; tests that alet bindings happen in sequence
     (multiple-value-bind (val-x val-y)
         (async-let ((val-x nil)
                     (val-y nil))
           (setf time-start (get-internal-real-time))
-          (alet* ((x (future-gen 5))
-                  (y (future-gen (+ 2 x))))
+          (alet* ((x (promise-gen 5))
+                  (y (promise-gen (+ 2 x))))
             (setf val-x x
                   val-y y)))
       (let ((alet*-run-time (/ (- (get-internal-real-time) time-start) internal-time-units-per-second)))
@@ -80,50 +80,50 @@
         (is (= val-x 5))
         (is (= val-y 7))))))
 
-(test future-multiple-future-bind
-  "Test multiple-future-bind macro"
+(test promise-multiple-promise-bind
+  "Test multiple-promise-bind macro"
   (multiple-value-bind (name age)
       (async-let ((name-res nil)
                   (age-res nil))
-        (multiple-future-bind (name age)
-            (future-gen "andrew" 69)
+        (multiple-promise-bind (name age)
+            (promise-gen "andrew" 69)
           (setf name-res name
                 age-res age)))
     (is (string= name "andrew"))
     (is (= age 69))))
 
-(test future-wait-for
-  "Test wait-for macro"
+(test promise-wait
+  "Test wait macro"
   (multiple-value-bind (res1 res2)
       (async-let ((res1 nil)
                   (res2 nil))
-        (wait-for (future-gen nil)
+        (wait (promise-gen nil)
           (setf res1 2))
-        (wait-for (future-gen nil)
+        (wait (promise-gen nil)
           (setf res2 4)))
     (is (= res1 2))
     (is (= res2 4))))
 
 (define-condition test-error-lol (error) ())
 
-(test future-handler-case
-  "Test future error handling"
+(test promise-handler-case
+  "Test promise error handling"
   (multiple-value-bind (err1 err2)
       (async-let ((err1 nil)
                   (err2 nil))
-        (future-handler-case
-          (future-handler-case
-            (alet ((x (future-gen 'sym1)))
+        (promise-handler-case
+          (promise-handler-case
+            (alet ((x (promise-gen 'sym1)))
               (+ x 7))
             (type-error (e)
               (setf err1 e)))
           (t (e)
             (declare (ignore e))
             (setf err1 :failwhale)))
-        (future-handler-case
-          (future-handler-case
-            (multiple-future-bind (name age)
-                (future-gen "leonard" 69)
+        (promise-handler-case
+          (promise-handler-case
+            (multiple-promise-bind (name age)
+                (promise-gen "leonard" 69)
               (declare (ignore name age))
               (error (make-instance 'test-error-lol)))
             (type-error (e)
@@ -134,7 +134,7 @@
     (is (subtypep (type-of err2) 'test-error-lol))))
 
 (test forwarding
-  "Test future forwarding"
+  "Test promise forwarding"
   (flet ((get-val ()
            (alet ((x 4))
              (alet ((y (+ x 4)))
@@ -147,39 +147,39 @@
 ;; test error propagation
 ;; -----------------------------------------------------------------------------
 
-(define-condition future-error (type-error)
-  ((msg :initarg :msg :reader future-errmsg :initform nil))
-  (:report (lambda (c s) (format s "Error event: ~a" (future-errmsg c)))))
+(define-condition promise-error (type-error)
+  ((msg :initarg :msg :reader promise-errmsg :initform nil))
+  (:report (lambda (c s) (format s "Error event: ~a" (promise-errmsg c)))))
 
 (defun fdelay (val)
-  (let ((future (make-future)))
-    (finish future (+ val 1))
-    future))
+  (let ((promise (make-promise)))
+    (finish promise (+ val 1))
+    promise))
 
-(defmacro defafun (name (future-bind) args &body body)
+(defmacro defafun (name (promise-bind) args &body body)
   `(defun ,name ,args
-     (let ((,future-bind (make-future)))
-       (future-handler-case
+     (let ((,promise-bind (make-promise)))
+       (promise-handler-case
          (progn ,@body)
          (t (e)
-           (signal-error ,future-bind e)))
-       ,future-bind)))
+           (signal-error ,promise-bind e)))
+       ,promise-bind)))
 
-(defafun async2 (future) (a)
+(defafun async2 (promise) (a)
   (alet* ((z (fdelay a))
           (b (+ z 1)))
-    (error 'future-error :msg "\"5\" is no expected type NUMBER")
-    (finish future (+ b 6))))
+    (error 'promise-error :msg "\"5\" is no expected type NUMBER")
+    (finish promise (+ b 6))))
 
-(defafun async1 (future) (a)
+(defafun async1 (promise) (a)
   (alet* ((x (fdelay a))
           (y (async2 x)))
-    (finish future y)))
+    (finish promise y)))
 
 (test error-propagation
   "Test error propagation"
   (let ((error-triggered nil))
-    (future-handler-case
+    (promise-handler-case
       (wait-for (async1 1)
         (setf error-triggered nil))
       (t (e)
