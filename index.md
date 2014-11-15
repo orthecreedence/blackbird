@@ -31,11 +31,12 @@ code is doing.
   - [alet*](#alet-star) _macro_
   - [aif](#aif) _macro_
   - [multiple-promise-bind](#multiple-promise-bind) _macro_
-  - [wait-for](#wait-for) _macro_
+  - [wait](#wait) _macro_
   - [adolist](#adolist) _macro_
 - [Error handling](#error-handling)
   - [promise-handler-case](#promise-handler-case) _macro_
   - [:promise-debug](#promise-debug) _feature_
+- [Backwards compatibility](#compat)
 
 
 <a id="intro"></a>
@@ -443,10 +444,10 @@ case it works exactly like `multiple-value-bind`.
   (format t "Hai, ~a. Your ID is ~a.~%" name id))
 {% endhighlight %}
 
-<a id="wait-for"></a>
-### wait-for
+<a id="wait"></a>
+### wait
 {% highlight cl %}
-(defmacro wait-for (promise-gen &body body))
+(defmacro wait (promise-gen &body body))
   => new-promise
 {% endhighlight %}
 
@@ -455,11 +456,11 @@ want to know when an operation has finished but don't care about the result.
 
 {% highlight cl %}
 ;; example: run-command can return a promise
-(wait-for (run-command)
+(wait (run-command)
   (format t "Command finished.~%"))
 {% endhighlight %}
 
-<a id="wait-for"></a>
+<a id="adolist"></a>
 ### adolist
 {% highlight cl %}
 (defmacro adolist ((item items &optional promise-bind) &body body))
@@ -592,4 +593,15 @@ things bubble up to the top level.
 
 Note that if you push `:promise-debug` onto `*features*`, you have to recompile
 your app (since it works on the macro level).
+
+<a id="compat"></a>
+Backwards compatibility
+-----------------------
+Blackbird is the successor to cl-async-future. In fact, the API is incredibly
+similar, except for renaming "future" to "promise" and renaming the `wait-for`
+macro to `wait`.
+
+However, Blackbird also exports all the previous functions and macros from
+cl-async-future as a compatibility layer. This means you can easily switch to
+Blackbird from cl-async-future and not have to touch a line of code.
 
