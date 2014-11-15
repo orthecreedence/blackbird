@@ -1,5 +1,5 @@
 ---
-title: Promises | Documentation
+title: Documentation
 layout: documentation
 ---
 
