@@ -3,15 +3,19 @@ title: Promises | Documentation
 layout: documentation
 ---
 
-Promises
-=======
-A promise is an object that represents a value at some point later on in the
-execution of an application. This is directly applicable to cl-async because
-most (if not all) of the operations it performs are done asynchronously, so you
-are constantly dealing with values that are not yet realized.
+BLackbird
+=========
+
+Blackbird is a promise implementation for Common Lisp. Its purpose is to make
+asynchronous operations (such as non-blocking IO or background jobs) simpler to
+comprehend and manage.
+
+On top of promises, it provides a number of macros to make using promises as
+natural as writing normal lisp code. This lowers the mental barrier to using
+asynchronous methods in your app and makes it easier to understand what your
+code is doing.
 
 - [Intro to promises](#intro)
-- [Integration with cl-async](#integration)
 - [Promises API](#promise-api)
   - [promise](#promise) _class_
   - [make-promise](#make-promise) _function_
@@ -37,9 +41,10 @@ are constantly dealing with values that are not yet realized.
 <a id="intro"></a>
 Intro to promises
 ----------------
-A promise is a representation of a value in the promise. The idea is that you can
-attach actions to a promise that will run once its value is computed, and also
-attach error handlers to make sure any problems are handled along the way.
+A promise is a representation of a value that may exist sometime in the future.
+The idea is that you can attach actions to a promise that will run once its
+value is computed, and also attach error handlers to make sure any problems are
+handled along the way.
 
 Promises not only give an important abstraction for asynchronous programming, but
 offer opportunities for [syntactic abstraction](#nicer-syntax) that make async
@@ -54,10 +59,10 @@ attach a callback to anything: a promise or a value, and the end result is the
 same. This way, the distiction between CPS and normal, stack-based programming
 fades slightly because a function can return a promise or a value, and you can
 bind a callback to either.
-- Calling [attach](#attach) always returns a promise. This promise get's fired
-with the *return value of the callback being attached*. So if you have Promise A
-and you attach a callback to it, `attach` returns Promise B. Promise B gets
-[finished](#finish) with the return value(s) from the callback attached to
+- Calling [attach](#attach) always returns a promise. This returned promise gets
+fired with the *return value of the callback being attached*. So if you have
+Promise A and you attach a callback to it, `attach` returns Promise B. Promise B
+gets [finished](#finish) with the return value(s) from the callback attached to
 Promise A.
 - [Finishing](#finish) a promise with another promise as the first value results
 in the callbacks/errbacks from the promise being finished transferring over
@@ -105,27 +110,6 @@ Notice how the callback was attached to the top-level promise, but was able to
 get the result computed from many async-levels deep. Not only does this mimick a
 normal call stack a lot closer than CPS, but can be wrapped in macros that make
 the syntax almost natural (note that these macros I speak of are on the way).
-
-<a id="integration"></a>
-Integration with cl-async
--------------------------
-Promises are at their core, the representation of one value. Because of this, I
-feel that their integration into cl-async is not appropriate. Most, if not all,
-of the asynchronous operations in cl-async are stream-oriented, server oriented,
-or have no values at all.
-
-Instead, promises are provided as a standard way to build drivers. Most drivers
-provide a request-response interface, which is much more suited to promises.
-
-So really, cl-async will at its core always use callbacks and CPS, but drivers
-will be able to use promises to provide an interface that makes its users feel
-less like they are programming javascript and more like programming lisp.
-
-### Promise package
-The promises implementation exists under the `cl-async-promise` package (`bb`)
-for short. This allows an application to import `cl-async-promise` into a `:use`
-clause in order to gain easy access to the syntax macros, but without importing
-all of cl-async as well.
 
 <a id="promise-api"></a>
 Promises API
