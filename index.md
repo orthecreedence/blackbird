@@ -6,11 +6,6 @@ layout: documentation
 Blackbird
 =========
 
-<div class="photo">
-    <img src="/blackbird/images/blackbird.png" width="175" height="264" alt="blackbird">
-    <small><a href="https://www.flickr.com/photos/clairity/318437820">Source</a></small>
-</div>
-
 Blackbird is a promise implementation for Common Lisp. Its purpose is to make
 asynchronous operations (such as non-blocking IO or background jobs) simpler to
 comprehend and manage.

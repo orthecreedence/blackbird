@@ -8,7 +8,7 @@ body {margin: 0; padding: 0; font-family: 'arial'; font-size: 14px; line-height:
 .clear {display: block;}
 /* */
 
-div#container {width: 800px; margin: 0 auto; padding: 0 20px; background: #fff; border-radius: 6px;}
+div#container {position: relative; z-index: 3; max-width: 800px; margin: 0 auto; padding: 0 20px; background: rgba(255, 255, 255, .4); border-radius: 6px;}
 
 header {margin: 0 0 80px 0; padding: 0; /*border-top: 10px solid #41a3a4;*/}
 header h1 {float: left; margin: 0; padding: 0 32px 1px 0; font-size: 16px; border-right: 1px solid #ccc;}
@@ -38,8 +38,11 @@ pre code {white-space: pre; margin: 0; padding: 0; background: none; border: non
 
 .post .date {float: right; display: inline-block; padding: 6px 0 0 0;}
 
-div.photo {float: right; padding: 0 0 12px 12px;}
-div.photo small {display: block; text-align: center; font-size: .9em; color: #999;}
+div.logo {position: fixed; z-index: 0; bottom: -2.0%; right: 10px; max-width: 30%; opacity: .8; transition: opacity .3s;}
+div.logo:hover {opacity: 1;}
+div.logo a,
+div.logo img {display: block;}
+div.logo img {width: 100%; height: auto;}
 
 /* highlighting, stole direct off github's css */
 .highlight pre {white-space: pre; background-color:#f8f8f8; border: 1px solid #ccc; font-size: 13px; line-height: 19px; overflow: auto; padding: 6px 10px; border-radius: 3px}
