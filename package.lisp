@@ -1,6 +1,6 @@
 (defpackage :blackbird
   (:use :cl)
-  (:nicknames :asf :bb)
+  (:nicknames :bb)
   (:export #:promise
            #:promise-finished-p
            #:make-promise
