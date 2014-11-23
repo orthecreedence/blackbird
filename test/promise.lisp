@@ -187,3 +187,41 @@
         (is (typep e 'type-error))))
     (is (eq error-triggered t))))
 
+(defvar *special-var-0*)
+(defvar *special-var-1*)
+(defvar *special-var-2*)
+(defvar *special-var-3*)
+
+(test test-keep-specials
+  "Test *promise-keep-specials*"
+  (let ((*promise-keep-specials* '(*special-var-0* *special-var-1*
+                                   *special-var-2* *special-var-3*))
+        (*special-var-1* :one)
+        (*special-var-2* :two)
+        (promise (make-promise))
+        result)
+    (labels ((get-vars ()
+               (loop for var in *promise-keep-specials*
+                     collect (if (boundp var)
+                                 (symbol-value var)
+                                 :unbound)))
+             (verify (finish-func)
+               (let ((*special-var-1* nil)
+                     (*special-var-2* :foo)
+                     (*special-var-3* :bar))
+                 (makunbound '*special-var-1*)
+                 (funcall finish-func)
+                 (is (equal '(:unbound :unbound :foo :bar) (get-vars))))
+               ;; unbound state of variables isn't preserved
+               ;; across the callback chain
+               (is (equal '(:unbound :one :two :unbound) result))))
+      (attach promise
+              #'(lambda (v)
+                  (declare (ignore v))
+                  (setf result (get-vars))))
+      (verify #'(lambda () (finish promise nil)))
+      (attach-errback promise
+                      #'(lambda (c)
+                          (declare (ignore c))
+                          (setf result (get-vars))))
+      (verify #'(lambda () (signal-error promise 'omg-lol-wtf))))))

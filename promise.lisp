@@ -1,5 +1,8 @@
 (in-package :blackbird)
 
+(defvar *promise-keep-specials* '()
+  "Names of special variables to be preserved during promise callbacks")
+
 (defclass promise ()
   ((callbacks :accessor promise-callbacks :initform nil
     :documentation "A list that holds all callbacks associated with this promise.")
@@ -30,6 +33,16 @@
      promise. Also supports attaching callbacks to the promise such that they will
      be called with the computed value(s) when ready."))
 
+(defun wrap-callback (callback)
+  (let ((all-vars *promise-keep-specials*)) ; avoid unneeded thread-unsafety
+    (if (null all-vars)
+        callback
+        (let* ((bound (remove-if-not #'boundp all-vars))
+               (vars (append bound (remove-if #'boundp all-vars)))
+               (vals (mapcar #'symbol-value bound)))
+          #'(lambda (&rest args)
+              (progv vars vals (apply callback args)))))))
+
 (defmethod print-object ((promise promise) s)
   (print-unreadable-object (promise s :type t :identity t)
     (format s "~_callback(s): ~s " (length (promise-callbacks promise)))
@@ -51,7 +64,7 @@
   (unless (member cb (promise-callbacks promise))
     (push cb (promise-callbacks promise))))
 
-(defun attach-errback (promise errback)
+(defun do-attach-errback (promise errback)
   "Add an error handler for this promise. If the errback already exists on this
    promise, don't re-add it."
   (when (promisep promise)
@@ -60,6 +73,10 @@
         (push errback (promise-errbacks forwarded-promise))
         (process-errors forwarded-promise))))
   promise)
+
+(defun attach-errback (promise errback)
+  "Add an error handler for this promise."
+  (do-attach-errback promise (wrap-callback errback)))
 
 (defun setup-promise-forward (promise-from promise-to)
   "Set up promise-from to send all callbacks, events, handlers, etc to the
@@ -73,7 +90,7 @@
   (dolist (cb (promise-callbacks promise-from))
     (do-add-callback promise-to cb))
   (dolist (errback (promise-errbacks promise-from))
-    (attach-errback promise-to errback))
+    (do-attach-errback promise-to errback))
   ;; mark the promise as forwarded to other parts of the system know to use the
   ;; new promise for various tasks.
   (setf (promise-forward-to promise-from) promise-to))
@@ -166,7 +183,7 @@
     ;; promise if it has finished.
     (if (promisep promise)
         (progn
-          (do-add-callback promise cb-wrapped)
+          (do-add-callback promise (wrap-callback cb-wrapped))
           (run-promise promise))
         ;; not a promise, just a value. run the callback directly
         (apply cb-wrapped promise-values))
@@ -187,7 +204,7 @@
   "Asynchronous let. Allows calculating a number of values in parallel via
    promises, and runs the body when all values have computed with the bindings
    given available to the body.
-   
+
    Also returns a promise that fires with the values returned from the body form,
    which allows arbitrary nesting to get a final value(s)."
   (let* ((ignore-bindings nil)
@@ -248,7 +265,7 @@
   "Asynchronous let*. Allows calculating a number of values in sequence via
    promises, and run the body when all values have computed with the bindings
    given available to the body.
-   
+
    Also returns a promise that fires with the values returned from the body form,
    which allows arbitrary nesting to get a final value(s)."
   (let* ((ignore-bindings nil)
@@ -362,13 +379,13 @@
 (defmacro wrap-event-handler (promise-gen error-forms)
   "Used to wrap the promise-generation forms of promise syntax macros. This macro
    is not to be used directly, but instead by promise-handler-case.
-   
+
    It allows itself to be recursive, but any recursions will simply add their
    error forms for a top-level list and return the form they are given as the
    body. This allows a top-level form to add an error handler to a promise, while
    gathering the lower-level forms' handler-case bindings into one big handler
    function (created with make-nexted-handler-cases).
-   
+
    Note that since normally the wrap-event-handler forms expand outside in, we
    have to do some trickery with the error-handling functions to make sure the
    order of the handler-case forms (as far as what level of the tree we're on)
@@ -417,7 +434,7 @@
 (defmacro promise-handler-case (body-form &rest error-forms &environment env)
   "Wrap all of our lovely attach macro up with an event handler. This is more or
    less restricted to the form it's run in.
-   
+
    Note that we only have to wrap (attach) because *all other syntax macros* use
    attach. This greatly simplifies our code.
 
@@ -457,4 +474,3 @@
                           ml-env))))
              ,body-form)
          ,@error-forms)))
-
