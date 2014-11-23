@@ -203,7 +203,6 @@
          (finished-promise (gensym "finished-promise"))
          (finished-vals (gensym "finished-vals"))
          (finished-cb (gensym "finished-cb"))
-         (inc-value (gensym "inc-value"))
          (args (gensym "args")))
     `(let* ((,num-bindings ,(length bindings)) ; make a local var for num-bindings
             (,finished-promise (make-promise))
