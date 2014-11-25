@@ -180,7 +180,7 @@
   "Test error propagation"
   (let ((error-triggered nil))
     (promise-handler-case
-      (wait-for (async1 1)
+      (wait (async1 1)
         (setf error-triggered nil))
       (t (e)
         (setf error-triggered t)

@@ -1,6 +1,6 @@
 (defpackage :blackbird
   (:use :cl)
-  (:nicknames :bb :asf)
+  (:nicknames :bb)
   (:export #:promise
            #:promise-finished-p
            #:make-promise
@@ -17,16 +17,5 @@
            #:multiple-promise-bind
            #:wait
            #:adolist
-           #:promise-handler-case
-    
-           ;; cl-async-future compatibility classes/functions/macros
-           #:future
-           #:future-finished-p
-           #:make-future
-           #:lookup-forwarded-future
-           #:futurep
-           #:reset-future
-           #:multiple-future-bind
-           #:future-handler-case
-           #:wait-for))
+           #:promise-handler-case))
 

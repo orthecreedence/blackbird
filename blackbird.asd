@@ -6,6 +6,5 @@
   :depends-on ()
   :components
   ((:file "package")
-   (:file "promise" :depends-on ("package"))
-   (:file "compat" :depends-on ("promise" "package"))))
+   (:file "promise" :depends-on ("package"))))
 
