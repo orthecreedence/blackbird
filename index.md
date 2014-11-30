@@ -80,7 +80,7 @@ operation for this to work).
 This is all probably greek, so let's give an example:
 
 {% highlight cl %}
-(use-package :cl-async-promise)
+(use-package :blackbird)
 
 (defun promise-calc (x)
   "Asynchronously add 1 to x, returning a promise that will be finished when x is computed."
