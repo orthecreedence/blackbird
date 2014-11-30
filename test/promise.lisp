@@ -1,8 +1,13 @@
 (in-package :blackbird-test)
 (in-suite blackbird-test)
 
-;; TODO: finishing, forwarding, error handling, syntax macros, attach with value
-;; vs promise (immediate finish)
+(defun promise-gen (value-cb &key delay)
+  (with-promise (resolve reject :resolve-fn resolve-fn)
+    (if delay
+        (as:delay (lambda () (apply resolve-fn (multiple-value-list (funcall value-cb))))
+                  :event-cb (lambda (e) (reject e))
+                  :time delay)
+        (apply resolve-fn (multiple-value-list (funcall value-cb))))))
 
 (test make-promise
   "Test that make-promise returns a promise, also test promisep"
@@ -13,7 +18,7 @@
 
 (test promise-callbacks
   "Test that finishing a promise fires its callbacks, also test multiple callbacks"
-  (let ((promise (make-promise))
+  (let ((promise (promise-gen (lambda () 5)))
         (res1 nil)
         (res2 nil))
     (attach promise
@@ -22,13 +27,12 @@
     (attach promise
       (lambda (x)
         (setf res2 (+ 7 x))))
-    (finish promise 5)
     (is (= res1 8))
     (is (= res2 12))))
 
 (test promise-errbacks
   "Test that errbacks are fired (also test multiple errbacks)"
-  (let ((promise (make-promise))
+  (let ((promise (promise-gen (lambda () (error "omg lol wtf"))))
         (fired1 nil)
         (fired2 nil))
     (attach-errback promise
@@ -38,15 +42,65 @@
       (lambda (ev)
         (setf fired2 ev)))
     (signal-error promise 'omg-lol-wtf)
-    (is (eq fired1 'omg-lol-wtf))
-    (is (eq fired2 'omg-lol-wtf))))
+    (is (typep fired1 'error))
+    (is (typep fired2 'error))))
 
-(defun promise-gen (&rest vals)
-  (let ((promise (make-promise)))
-    (as:delay (lambda () (apply #'finish (append (list promise) vals)))
-              :time .2
-              :event-cb (lambda (ev) (signal-error promise ev)))
-    promise))
+(test promisify
+  "Make sure promisifying works properly"
+  (let ((val1 nil)
+        (err1 nil)
+        (val2 nil)
+        (err2 nil)
+        (val3 nil)
+        (err3 nil))
+    ;; value
+    (let ((promise1 (promisify 5)))
+      (attach-errback promise1 (lambda (e) (setf err1 e)))
+      (attach promise1 (lambda (x) (setf val1 x)))
+      (is (promisep promise1)))
+    ;; error
+    (let ((promise2 (promisify (error "an error"))))
+      (attach-errback promise2 (lambda (e) (setf err2 e)))
+      (attach promise2 (lambda (x) (setf val2 x)))
+      (is (promisep promise2)))
+    ;; multiple values
+    (let ((promise3 (promisify (values 3 6 7))))
+      (attach-errback promise3 (lambda (e) (setf err3 e)))
+      (attach promise3 (lambda (&rest vals) (setf val3 vals)))
+      (is (promisep promise3)))
+    (is (eq val1 5))
+    (is (eq err1 nil))
+    (is (eq val2 nil))
+    (is (typep err2 'error))
+    (is (equalp val3 (list 3 6 7)))
+    (is (eq err3 nil))))
+
+(test with-promise
+  "Test standard promise creation via with-promise"
+  ;; value(s)
+  (let ((val nil))
+    (attach
+      (with-promise (resolve reject)
+        (resolve 12 5))
+      (lambda (&rest vals) (setf val vals)))
+    (is (equalp val (list 12 5))))
+  ;; reject errors
+  (let ((val nil)
+        (err nil))
+    (let ((promise (with-promise (resolve reject)
+                     (reject (make-instance 'error))
+                     (resolve 3))))
+      (attach promise (lambda (v) (setf val v)))
+      (attach-errback promise (lambda (e) (setf err e))))
+    (is (eq val nil))
+    (is (typep err 'error)))
+  ;; caught errors
+  (let ((err nil))
+    (let ((promise (with-promise (resolve reject)
+                     (error "oh crap")
+                     (resolve 4))))
+      (attach-errback promise (lambda (e) (setf err e))))
+    (is (typep err 'error))))
 
 (test promise-alet
   "Test that the alet macro functions correctly"
@@ -55,8 +109,8 @@
         (async-let ((val-x nil)
                     (val-y nil))
           (setf time-start (get-internal-real-time))
-          (alet ((x (promise-gen 5))
-                 (y (promise-gen 2)))
+          (alet ((x (promise-gen (lambda () 5) :delay .2))
+                 (y (promise-gen (lambda () 2) :delay .2)))
             (setf val-x x
                   val-y y)))
       (is (<= .19 (/ (- (get-internal-real-time) time-start) internal-time-units-per-second) .22))
@@ -70,8 +124,8 @@
         (async-let ((val-x nil)
                     (val-y nil))
           (setf time-start (get-internal-real-time))
-          (alet* ((x (promise-gen 5))
-                  (y (promise-gen (+ 2 x))))
+          (alet* ((x (promise-gen (lambda () 5) :delay .2))
+                  (y (promise-gen (lambda () (+ 2 x)) :delay .2)))
             (setf val-x x
                   val-y y)))
       (let ((alet*-run-time (/ (- (get-internal-real-time) time-start) internal-time-units-per-second)))
@@ -79,26 +133,26 @@
         (is (= val-x 5))
         (is (= val-y 7))))))
 
-(test promise-multiple-promise-bind
+(test multiple-promise-bind
   "Test multiple-promise-bind macro"
   (multiple-value-bind (name age)
       (async-let ((name-res nil)
                   (age-res nil))
         (multiple-promise-bind (name age)
-            (promise-gen "andrew" 69)
+            (promise-gen (lambda () (values "andrew" 69)) :delay .2)
           (setf name-res name
                 age-res age)))
     (is (string= name "andrew"))
-    (is (= age 69))))
+    (is (eq age 69))))
 
 (test promise-wait
   "Test wait macro"
   (multiple-value-bind (res1 res2)
       (async-let ((res1 nil)
                   (res2 nil))
-        (wait (promise-gen nil)
+        (wait (promise-gen (lambda () nil))
           (setf res1 2))
-        (wait (promise-gen nil)
+        (wait (promise-gen (lambda () nil))
           (setf res2 4)))
     (is (= res1 2))
     (is (= res2 4))))
@@ -112,7 +166,7 @@
                   (err2 nil))
         (promise-handler-case
           (promise-handler-case
-            (alet ((x (promise-gen 'sym1)))
+            (alet ((x (promise-gen (lambda () 'sym1))))
               (+ x 7))
             (type-error (e)
               (setf err1 e)))
@@ -122,7 +176,7 @@
         (promise-handler-case
           (promise-handler-case
             (multiple-promise-bind (name age)
-                (promise-gen "leonard" 69)
+                (promise-gen (lambda () (values "leonard" 69)))
               (declare (ignore name age))
               (error (make-instance 'test-error-lol)))
             (type-error (e)
@@ -143,7 +197,120 @@
 
 
 ;; -----------------------------------------------------------------------------
-;; test error propagation
+;; test error propagation/finalizers
+;; -----------------------------------------------------------------------------
+
+(test catcher-catch
+  "Test catchers will catch errors in the chain."
+  (let ((err nil)
+        (val nil))
+    (catcher
+      (attach
+        12
+        (lambda (x)
+          (attach
+            (+ x 'uhoh)
+            (lambda (x) (setf val x)))))
+      (error (e) (setf err e)))
+    (is (typep err 'error))
+    (is (eq val nil))))
+              
+(test catcher-passthru
+  "Test catchers will forward values if no error is caught."
+  (let ((err nil)
+        (val nil))
+    (attach
+      (catcher
+        (attach 4 (lambda (x) (+ x 5)))
+        (t (e) (setf err e)))
+      (lambda (x)
+        (setf val x)))
+    (is (eq val 9))
+    (is (eq err nil))))
+
+(test finally
+  "Finally works"
+  (let ((val1 nil)
+        (val2 nil))
+    (finally (with-promise (res rej) (res 12))
+      (setf val1 3))
+    (finally (with-promise (res rej) (error "dasdf") (res 1))
+      (setf val2 7))
+    (is (eq val1 3))
+    (is (eq val2 7))))
+
+;; -----------------------------------------------------------------------------
+;; special var handling
+;; -----------------------------------------------------------------------------
+(test chaining
+  "Test chaining"
+  (let ((val nil))
+    (chain 4
+      (:then (x) (+ x 7))
+      (:then (x) (list 3 x 9))
+      (:map (x) (+ x 1))
+      (:reduce (acc x 0) (+ acc x))
+      (:then (final) (setf val final)))
+    (is (eq val 26)))
+  (let ((err nil)
+        (val nil)
+        (final nil))
+    (chain 4
+      (:then (x) (list (+ x 5) 'ttt))
+      (:map (x) (+ x 12))
+      (:then (x) (+ x 4))
+      (:then (x) (setf val x))
+      (:catch (e) (setf err e))
+      (:finally () (setf final 'lol)))
+    (is (typep err 'type-error))
+    (is (eq val nil))
+    (is (eq final 'lol))))
+
+;; -----------------------------------------------------------------------------
+;; special var handling
+;; -----------------------------------------------------------------------------
+
+(defvar *special-var-0*)
+(defvar *special-var-1*)
+(defvar *special-var-2*)
+(defvar *special-var-3*)
+
+(test test-keep-specials
+  "Test *promise-keep-specials*"
+  (let ((*promise-keep-specials* '(*special-var-0* *special-var-1*
+                                   *special-var-2* *special-var-3*))
+        (*special-var-1* :one)
+        (*special-var-2* :two)
+        (promise (make-promise))
+        result)
+    (labels ((get-vars ()
+               (loop for var in *promise-keep-specials*
+                     collect (if (boundp var)
+                                 (symbol-value var)
+                                 :unbound)))
+             (verify (finish-func)
+               (let ((*special-var-1* nil)
+                     (*special-var-2* :foo)
+                     (*special-var-3* :bar))
+                 (makunbound '*special-var-1*)
+                 (funcall finish-func)
+                 (is (equal '(:unbound :unbound :foo :bar) (get-vars))))
+               ;; unbound state of variables isn't preserved
+               ;; across the callback chain
+               (is (equal '(:unbound :one :two :unbound) result))))
+      (attach promise
+              #'(lambda (v)
+                  (declare (ignore v))
+                  (setf result (get-vars))))
+      (verify #'(lambda () (finish promise nil)))
+      (attach-errback promise
+                      #'(lambda (c)
+                          (declare (ignore c))
+                          (setf result (get-vars))))
+      (verify #'(lambda () (signal-error promise 'omg-lol-wtf))))))
+
+;; -----------------------------------------------------------------------------
+;; old promise-handler-case test (obsolete)
 ;; -----------------------------------------------------------------------------
 
 (define-condition promise-error (type-error)
@@ -186,41 +353,3 @@
         (is (typep e 'type-error))))
     (is (eq error-triggered t))))
 
-(defvar *special-var-0*)
-(defvar *special-var-1*)
-(defvar *special-var-2*)
-(defvar *special-var-3*)
-
-(test test-keep-specials
-  "Test *promise-keep-specials*"
-  (let ((*promise-keep-specials* '(*special-var-0* *special-var-1*
-                                   *special-var-2* *special-var-3*))
-        (*special-var-1* :one)
-        (*special-var-2* :two)
-        (promise (make-promise))
-        result)
-    (labels ((get-vars ()
-               (loop for var in *promise-keep-specials*
-                     collect (if (boundp var)
-                                 (symbol-value var)
-                                 :unbound)))
-             (verify (finish-func)
-               (let ((*special-var-1* nil)
-                     (*special-var-2* :foo)
-                     (*special-var-3* :bar))
-                 (makunbound '*special-var-1*)
-                 (funcall finish-func)
-                 (is (equal '(:unbound :unbound :foo :bar) (get-vars))))
-               ;; unbound state of variables isn't preserved
-               ;; across the callback chain
-               (is (equal '(:unbound :one :two :unbound) result))))
-      (attach promise
-              #'(lambda (v)
-                  (declare (ignore v))
-                  (setf result (get-vars))))
-      (verify #'(lambda () (finish promise nil)))
-      (attach-errback promise
-                      #'(lambda (c)
-                          (declare (ignore c))
-                          (setf result (get-vars))))
-      (verify #'(lambda () (signal-error promise 'omg-lol-wtf))))))

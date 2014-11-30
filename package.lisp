@@ -5,6 +5,7 @@
            #:promise-finished-p
            #:make-promise
            #:with-promise
+           #:promisify
            
            #:attach-errback
            #:lookup-forwarded-promise

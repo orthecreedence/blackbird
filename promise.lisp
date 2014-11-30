@@ -244,9 +244,7 @@
         (handler-case
           (resolve (funcall handler-fn e))
           (condition (c) (reject c)))))
-    (attach-cb promise
-      (lambda (&rest vals)
-        (apply resolve-fn vals)))))
+    (resolve promise)))
 
 (defmacro catcher (promise-gen &rest handler-forms)
   "Catch errors in the promise chain and run a handler function when caught."

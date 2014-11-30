@@ -3,8 +3,6 @@
   (:export #:run-tests))
 (in-package :blackbird-test)
 
-;; TODO: test all functions in util package
-
 (defmacro async-let ((&rest bindings) &body body)
   "Wrap an async op inside of a let/start-event-loop block to mimick a blocking
    action. Bindings must be set from withing the block via setf."
