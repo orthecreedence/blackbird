@@ -601,7 +601,15 @@ Blackbird is the successor to cl-async-future. In fact, the API is incredibly
 similar, except for renaming "future" to "promise" and renaming the `wait-for`
 macro to `wait`.
 
-However, Blackbird also exports all the previous functions and macros from
-cl-async-future as a compatibility layer. This means you can easily switch to
-Blackbird from cl-async-future and not have to touch a line of code.
+Because a number of libraries depend on cl-async-future but may want to switch
+to blackbird (or not), cl-async-future has been re-written to be a compatibility
+layer over blackbird. This means that whenever you use cl-async-future, you're
+actually using blackbird under the hood. This is imnportant because your app
+can use the same promise objects from another app even if you're using
+cl-async-future and the other app is using blackbird (the libraries have
+interchangable promise objects).
+
+So for users of cl-async-future, there's no upgrade needed. You can continue
+using it, and even gain access to incremental improvements that go into
+blackbird.
 
