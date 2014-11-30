@@ -19,15 +19,4 @@
            #:adolist
            #:promise-handler-case
 
-           ;; cl-async-future compatibility classes/functions/macros
-           #:future
-           #:future-finished-p
-           #:make-future
-           #:lookup-forwarded-future
-           #:futurep
-           #:reset-future
-           #:multiple-future-bind
-           #:future-handler-case
-           #:wait-for
-
            #:*promise-keep-specials*))
