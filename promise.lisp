@@ -19,11 +19,10 @@
     :documentation "Marks if a promise has been finished or not.")
    (errored :accessor promise-errored :reader promise-errored-p :initform nil
     :documentation "Marks if an error occured on this promise.")
-   (events :accessor promise-events :initform nil
-    :documentation "Holds events for this promise, to be handled with event-handler.")
+   (error :accessor promise-error :initform nil
+    :documentation "Holds an error value for this promise.")
    (values :accessor promise-values :initform nil
-    :documentation "Holds the finished value(s) of the computer promise. Will be
-                    apply'ed to the callbacks."))
+    :documentation "Holds the finished value(s) of the promise."))
   (:documentation
     "Defines a class which represents a value that MAY be ready sometime in the
      promise. Also supports attaching callbacks to the promise such that they will
@@ -63,9 +62,7 @@
          (resolve-fn (lambda (&rest vals) (apply 'finish (append (list promise) vals))))
          (reject-fn (lambda (condition) (signal-error promise condition))))
     (handler-case
-      (catcher
-        (funcall create-fn resolve-fn reject-fn)
-        (condition (c) (signal-error promise c)))
+      (funcall create-fn resolve-fn reject-fn)
       (condition (c) (signal-error promise c)))
     promise))
 
@@ -141,8 +138,6 @@
    added to the new promise-to if added to the promise-from."
   ;; a promise "returned" another promise. reattach the callbacks/errbacks from
   ;; the original promise onto the returned one
-  (dolist (error (promise-events promise-from))
-    (push error (promise-events promise-to)))
   (dolist (cb (reverse (promise-callbacks promise-from)))
     (do-add-callback promise-to cb))
   (dolist (errback (reverse (promise-errbacks promise-from)))
@@ -165,11 +160,12 @@
    happens."
   (if (promise-errored-p promise)
       (when (promise-errbacks promise)
-        (dolist (ev (nreverse (promise-events promise)))
-          (dolist (errback-entry (reverse (promise-errbacks promise)))
+        (let ((errbacks (reverse (promise-errbacks promise)))
+              (error (promise-error promise)))
+          (dolist (errback-entry errbacks)
             (let* ((promise (car errback-entry))
                    (errback (cdr errback-entry))
-                   (res (funcall errback ev)))
+                   (res (funcall errback error)))
               (finish promise res))))
         (setf (promise-errbacks promise) nil))
       (when (promise-finished-p promise)
@@ -206,7 +202,7 @@
               (promise-finished-p promise))
     (when (promisep promise)
       (let ((forwarded-promise (lookup-forwarded-promise promise)))
-        (push condition (promise-events forwarded-promise))
+        (setf (promise-error forwarded-promise) condition)
         (setf (promise-errored forwarded-promise) t)
         (run-promise forwarded-promise)))))
 
@@ -215,7 +211,7 @@
   (let ((promise (lookup-forwarded-promise promise)))
     (setf (promise-callbacks promise) nil
           (promise-errbacks promise) nil
-          (promise-events promise) nil
+          (promise-error promise) nil
           (promise-values promise) nil
           (promise-finished promise) nil))
   promise)
