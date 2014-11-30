@@ -3,7 +3,7 @@
   :license "MIT"
   :version "0.2"
   :description "TESTS FOR blackbird."
-  :depends-on (#:cl-async #:blackbird #:eos)
+  :depends-on (#:cl-async #:blackbird #:fiveam)
   :components
   ((:module test
     :serial t
