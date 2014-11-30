@@ -60,18 +60,15 @@
   (subtypep (type-of promise) 'promise))
 
 (defun do-add-callback (promise cb)
-  "Add a callback to a promise if it isn't already attached."
-  (unless (member cb (promise-callbacks promise))
-    (push cb (promise-callbacks promise))))
+  "Add a callback to a promise."
+  (push cb (promise-callbacks promise)))
 
 (defun do-attach-errback (promise errback)
-  "Add an error handler for this promise. If the errback already exists on this
-   promise, don't re-add it."
+  "Add an error handler for this promise."
   (when (promisep promise)
     (let ((forwarded-promise (lookup-forwarded-promise promise)))
-      (unless (member errback (promise-errbacks forwarded-promise))
-        (push errback (promise-errbacks forwarded-promise))
-        (process-errors forwarded-promise))))
+      (push errback (promise-errbacks forwarded-promise))
+      (process-errors forwarded-promise)))
   promise)
 
 (defun attach-errback (promise errback)
