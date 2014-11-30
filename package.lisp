@@ -4,19 +4,27 @@
   (:export #:promise
            #:promise-finished-p
            #:make-promise
+           #:with-promise
+           
            #:attach-errback
            #:lookup-forwarded-promise
            #:signal-error
            #:promisep
            #:finish
            #:reset-promise
+
            #:attach
+           #:catcher
+           #:finally
+
+           #:chain
            #:alet
            #:alet*
            #:aif
            #:multiple-promise-bind
            #:wait
            #:adolist
+
            #:promise-handler-case
 
            #:*promise-keep-specials*))

@@ -7,7 +7,6 @@
 (test make-promise
   "Test that make-promise returns a promise, also test promisep"
   (is (promisep (make-promise)))
-  (is (promisep (make-promise :preserve-callbacks t :reattach-callbacks nil)))
   (is (not (promisep 'hai)))
   (is (not (promisep "omg, WHERE did you get those shoes?!")))
   (is (not (promisep nil))))
