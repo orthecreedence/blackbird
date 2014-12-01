@@ -16,6 +16,7 @@
     - :then/:attach
     - :map
     - :reduce
+    - :filter
     - :all
     - :catch/:catcher
     - :finally"
@@ -26,8 +27,10 @@
              (:map
               `(amap (lambda ,(cadr op) ,@(cddr op)) ,promise))
              (:reduce
-               (let ((args (cadr op)))
-                 `(areduce (lambda ,(list (car args) (cadr args)) ,@(cddr op)) ,promise ,(caddr args))))
+              (let ((args (cadr op)))
+                `(areduce (lambda ,(list (car args) (cadr args)) ,@(cddr op)) ,promise ,(caddr args))))
+             (:filter
+              `(afilter (lambda ,(cadr op) ,@(cddr op)) ,promise))
              (:all
               `(all ,promise))
              ((or :catch :catcher)
@@ -256,6 +259,21 @@
       (alet* ((res (all promise-list)))
         (catcher
           (resolve (reduce function res :initial-value initial-value))
+          (condition (e) (reject e))))
+      (condition (e) (reject e)))))
+
+(defun afilter (function promise-list)
+  "Perform a filter on a list of promises, or a promise of a list of promises,
+   resolving the returned promise with the filtered list once complete."
+  (with-promise (resolve reject)
+    (catcher
+      (alet* ((res (all promise-list))
+              (res (amap (lambda (x)
+                           (alet* ((val (funcall function x)))
+                             (and val x)))
+                         res)))
+        (catcher
+          (resolve (remove-if 'null res))
           (condition (e) (reject e))))
       (condition (e) (reject e)))))
 

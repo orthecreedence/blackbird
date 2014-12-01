@@ -307,6 +307,18 @@
       (lambda (x) (setf res x)))
     (is (eq res 6))))
 
+(test afilter
+  "Test filtering on a list of vals/promises"
+  (let ((vals (with-promise (res rej)
+                (res (list 3
+                           (with-promise (res rej) (res 4))
+                           5))))
+        (res nil))
+    (attach 
+      (afilter (lambda (x) (with-promise (res rej) (res (oddp x)))) vals)
+      (lambda (x) (setf res x)))
+    (is (equalp res (list 3 5)))))
+
 ;; -----------------------------------------------------------------------------
 ;; special var handling
 ;; -----------------------------------------------------------------------------
@@ -366,7 +378,7 @@
   ;; should be nil until it resolves a second later
   (let ((*promise-finish-hook*
           (lambda (finish-fn)
-            (as:delay finish-fn :time 1))))
+            (as:delay finish-fn :time .1))))
     (multiple-value-bind (val)
         (async-let ((val nil))
           (let ((promise (with-promise (res rej) (res 12))))

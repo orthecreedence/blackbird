@@ -29,6 +29,7 @@
            #:amap
            #:all
            #:areduce
+           #:afilter
 
            #:promise-handler-case
 
