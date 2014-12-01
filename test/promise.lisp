@@ -244,14 +244,17 @@
 ;; -----------------------------------------------------------------------------
 (test chaining
   "Test chaining"
-  (let ((val nil))
+  (let ((val nil)
+        (final nil))
     (chain 4
       (:then (x) (+ x 7))
       (:then (x) (list 3 x 9))
       (:map (x) (+ x 1))
       (:reduce (acc x 0) (+ acc x))
-      (:then (final) (setf val final)))
-    (is (eq val 26)))
+      (:then (final) (setf val final))
+      (:finally () (setf final 4)))
+    (is (eq val 26))
+    (is (eq final 4)))
   (let ((err nil)
         (val nil)
         (final nil))
