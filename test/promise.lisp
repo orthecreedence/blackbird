@@ -267,6 +267,47 @@
     (is (eq final 'lol))))
 
 ;; -----------------------------------------------------------------------------
+;; promise utils (map, reduce, etc)
+;; -----------------------------------------------------------------------------
+(test amap
+  "Test mapping over a list of vals/promises"
+  (let ((vals (with-promise (res rej)
+                (res (list 3
+                           (with-promise (res rej) (res 4))
+                           5))))
+        (res nil))
+    (attach 
+      (amap (lambda (x) (with-promise (res rej) (res (+ x 5)))) vals)
+      (lambda (x) (setf res x)))
+    (is (equalp res (list 8 9 10)))))
+
+(test all
+  "Test waiting on a list of promises/vals"
+  (let ((vals (with-promise (res rej)
+                (res (list 1
+                           (with-promise (res rej) (res 2))
+                           (with-promise (res rej) (res 3))))))
+        (res nil))
+    (attach
+      (all vals)
+      (lambda (x) (setf res x)))
+    (is (equalp res (list 1 2 3)))))
+
+(test areduce
+  "Test reducing a list of vals/promises"
+  (let ((vals (with-promise (res rej)
+                (res (list 1
+                           (with-promise (res rej) (res 2))
+                           (with-promise (res rej) (res 3))))))
+        (res nil))
+    (attach
+      (areduce (lambda (agg x) (+ agg x))
+               vals
+               0)
+      (lambda (x) (setf res x)))
+    (is (eq res 6))))
+
+;; -----------------------------------------------------------------------------
 ;; special var handling
 ;; -----------------------------------------------------------------------------
 

@@ -26,6 +26,10 @@
            #:wait
            #:adolist
 
+           #:amap
+           #:all
+           #:areduce
+
            #:promise-handler-case
 
            #:*promise-keep-specials*
