@@ -3,6 +3,11 @@
 (defvar *promise-keep-specials* '()
   "Names of special variables to be preserved during promise callbacks")
 
+(defvar *promise-finish-hook* (lambda (finish-fn) (funcall finish-fn))
+  "This is a function of one argument: a function of 0 args that is called to
+   finish a promise. By default it just finishes the promise, but can be
+   replaced to add a delay to the promise or finish it from another thread.")
+
 (defclass promise ()
   ((name :accessor promise-name :initarg :name :initform nil
     :documentation "Lets a promise be named this is good for debugging.")
@@ -182,17 +187,20 @@
   (unless (or (promise-finished-p promise)
               (promise-errored-p promise))
     (let ((new-promise (car values)))
-      (cond ((promisep new-promise)
-             ;; set up the current promise to forward all callbacks/handlers/events
-             ;; to the new promise from now on.
-             (setup-promise-forward promise new-promise)
-             ;; run the new promise
-             (run-promise new-promise))
-            (t
-             ;; just a normal finish, run the promise
-             (setf (promise-finished promise) t
-                   (promise-values promise) values)
-             (run-promise promise))))))
+      (funcall *promise-finish-hook*
+        (lambda ()
+          (cond ((promisep new-promise)
+                 ;; set up the current promise to forward all callbacks/handlers/events
+                 ;; to the new promise from now on.
+                 (setup-promise-forward promise new-promise)
+                 ;; run the new promise
+                 (run-promise new-promise))
+                (t
+                 ;; just a normal finish, run the promise
+                 (setf (promise-finished promise) t
+                       (promise-values promise) values)
+                 (run-promise promise)))))
+      promise)))
 
 (defun signal-error (promise condition)
   "Signal that an error has happened on a promise. If the promise has errbacks,

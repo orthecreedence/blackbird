@@ -28,4 +28,5 @@
 
            #:promise-handler-case
 
-           #:*promise-keep-specials*))
+           #:*promise-keep-specials*
+           #:*promise-finish-hook*))

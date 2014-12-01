@@ -310,6 +310,31 @@
       (verify #'(lambda () (signal-error promise 'omg-lol-wtf))))))
 
 ;; -----------------------------------------------------------------------------
+;; forced async finishing
+;; -----------------------------------------------------------------------------
+(test forced-async
+  "Test that forced-async finishing works"
+  ;; should resolve a value immediately
+  (multiple-value-bind (val)
+      (async-let ((val nil))
+        (let ((promise (with-promise (res rej) (res 12))))
+          (attach promise
+            (lambda (x) (setf val x)))
+          (is (eq val 12))))
+    (is (eq val 12)))
+  ;; should be nil until it resolves a second later
+  (let ((*promise-finish-hook*
+          (lambda (finish-fn)
+            (as:delay finish-fn :time 1))))
+    (multiple-value-bind (val)
+        (async-let ((val nil))
+          (let ((promise (with-promise (res rej) (res 12))))
+            (attach promise
+              (lambda (x) (setf val x)))
+            (is (eq val nil))))
+      (is (eq val 12)))))
+
+;; -----------------------------------------------------------------------------
 ;; old promise-handler-case test (obsolete)
 ;; -----------------------------------------------------------------------------
 
