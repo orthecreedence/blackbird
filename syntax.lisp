@@ -168,9 +168,13 @@
     `(attach ,promise-gen
        (lambda (&rest ,args)
          (destructuring-bind ,bindings ,args
-           ;; ignore any nil bindings
-           ,(when ignore-bindings
-              `(declare (ignore ,@ignore-bindings)))
+           ,(if ignore-bindings
+                ;; ignore any nil bindings
+                `(declare (ignore ,@ignore-bindings))
+                ;; pointless declaration so we can have other declarations in
+                ;; the body if desired (so we return any declaration other than
+                ;; nil)
+                `(declare (type list ,args)))
            ,@body)))))
 
 (defmacro wait (promise-gen &body body)
