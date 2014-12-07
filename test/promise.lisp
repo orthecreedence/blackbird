@@ -11,7 +11,7 @@
 
 (test make-promise
   "Test that make-promise returns a promise, also test promisep"
-  (is (promisep (make-promise)))
+  (is (promisep (blackbird-base:make-promise)))
   (is (not (promisep 'hai)))
   (is (not (promisep "omg, WHERE did you get those shoes?!")))
   (is (not (promisep nil))))
@@ -308,7 +308,7 @@
                                    *special-var-2* *special-var-3*))
         (*special-var-1* :one)
         (*special-var-2* :two)
-        (promise (make-promise))
+        (promise (blackbird-base:make-promise))
         result)
     (labels ((get-vars ()
                (loop for var in *promise-keep-specials*

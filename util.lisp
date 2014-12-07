@@ -1,4 +1,4 @@
-(in-package :blackbird)
+(in-package :blackbird-util)
 
 (defmacro adolist ((item items &optional promise-bind) &body body)
   "Async version of dolist, only continues loop when promise in final form
