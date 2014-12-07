@@ -329,7 +329,7 @@
               #'(lambda (v)
                   (declare (ignore v))
                   (setf result (get-vars))))
-      (verify #'(lambda () (finish promise nil)))
+      (verify #'(lambda () (blackbird-base:finish promise nil)))
       (attach-errback promise
                       #'(lambda (c)
                           (declare (ignore c))

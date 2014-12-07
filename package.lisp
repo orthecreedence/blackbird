@@ -56,11 +56,8 @@
            #:promisify
            
            #:attach-errback
-           #:lookup-forwarded-promise
            #:signal-error
            #:promisep
-           #:finish
-           #:reset-promise
 
            #:attach
            #:catcher
