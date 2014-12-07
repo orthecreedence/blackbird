@@ -157,35 +157,6 @@
     (is (= res1 2))
     (is (= res2 4))))
 
-(define-condition test-error-lol (error) ())
-
-(test promise-handler-case
-  "Test promise error handling"
-  (multiple-value-bind (err1 err2)
-      (async-let ((err1 nil)
-                  (err2 nil))
-        (promise-handler-case
-          (promise-handler-case
-            (alet ((x (promise-gen (lambda () 'sym1))))
-              (+ x 7))
-            (type-error (e)
-              (setf err1 e)))
-          (t (e)
-            (declare (ignore e))
-            (setf err1 :failwhale)))
-        (promise-handler-case
-          (promise-handler-case
-            (multiple-promise-bind (name age)
-                (promise-gen (lambda () (values "leonard" 69)))
-              (declare (ignore name age))
-              (error (make-instance 'test-error-lol)))
-            (type-error (e)
-              (setf err2 e)))
-          (t (e)
-            (setf err2 e))))
-    (is (subtypep (type-of err1) 'type-error))
-    (is (subtypep (type-of err2) 'test-error-lol))))
-
 (test forwarding
   "Test promise forwarding"
   (flet ((get-val ()
@@ -389,48 +360,4 @@
               (lambda (x) (setf val x)))
             (is (eq val nil))))
       (is (eq val 12)))))
-
-;; -----------------------------------------------------------------------------
-;; old promise-handler-case test (obsolete)
-;; -----------------------------------------------------------------------------
-
-(define-condition promise-error (type-error)
-  ((msg :initarg :msg :reader promise-errmsg :initform nil))
-  (:report (lambda (c s) (format s "Error event: ~a" (promise-errmsg c)))))
-
-(defun fdelay (val)
-  (let ((promise (make-promise)))
-    (finish promise (+ val 1))
-    promise))
-
-(defmacro defafun (name (promise-bind) args &body body)
-  `(defun ,name ,args
-     (let ((,promise-bind (make-promise)))
-       (promise-handler-case
-         (progn ,@body)
-         (t (e)
-           (signal-error ,promise-bind e)))
-       ,promise-bind)))
-
-(defafun async2 (promise) (a)
-  (alet* ((z (fdelay a))
-          (b (+ z 1)))
-    (error 'promise-error :msg "\"5\" is no expected type NUMBER")
-    (finish promise (+ b 6))))
-
-(defafun async1 (promise) (a)
-  (alet* ((x (fdelay a))
-          (y (async2 x)))
-    (finish promise y)))
-
-(test error-propagation
-  "Test error propagation"
-  (let ((error-triggered nil))
-    (promise-handler-case
-      (wait (async1 1)
-        (setf error-triggered nil))
-      (t (e)
-        (setf error-triggered t)
-        (is (typep e 'type-error))))
-    (is (eq error-triggered t))))
 

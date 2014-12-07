@@ -6,7 +6,7 @@
   :depends-on ()
   :components
   ((:file "package")
+   (:file "syntax" :depends-on ("package"))
    (:file "promise" :depends-on ("package"))
-   (:file "syntax" :depends-on ("package" "promise"))
-   (:file "error" :depends-on ("package" "promise" "syntax"))))
+   (:file "util" :depends-on ("package" "promise" "syntax"))))
 

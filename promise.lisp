@@ -1,4 +1,4 @@
-(in-package :blackbird)
+(in-package :blackbird-base)
 
 (defvar *promise-keep-specials* '()
   "Names of special variables to be preserved during promise callbacks")
@@ -76,7 +76,12 @@
                               (reject-fn (gensym "reject-fn"))
                               name)
                          &body body)
-  "Wraps create-promise in nicer syntax."
+  "Wraps create-promise in nicer syntax:
+
+     (with-promise (resolve reject)
+       (do-something (lambda (result)
+                       (resolve result))))
+       => promise"
   `(create-promise 
      (lambda (,resolve-fn ,reject-fn)
        (declare (ignorable ,reject-fn))
@@ -224,7 +229,7 @@
           (promise-finished promise) nil))
   promise)
 
-(defun attach-cb (promise cb &key name)
+(defun do-attach (promise cb &key name)
   "Attach a callback to a promise. The promise must be the first value in a list
    of values (car promise-values) OR the promise-values will be apply'ed to cb."
   (let* ((promise (lookup-forwarded-promise promise))
@@ -242,7 +247,7 @@
 (defmacro attach (promise-gen cb)
   "Macro wrapping attachment of callback to a promise (takes multiple values into
    account, which a simple function cannot)."
-  `(attach-cb (promisify ,promise-gen) ,cb :name ,(format nil "attach: ~s" promise-gen)))
+  `(do-attach (promisify ,promise-gen) ,cb :name ,(format nil "attach: ~s" promise-gen)))
 
 (defun do-catch (promise handler-fn)
   "Catch errors in the promise chain and run a handler function when caught."
