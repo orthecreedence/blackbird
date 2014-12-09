@@ -21,6 +21,8 @@
            #:attach
            #:do-catch
            #:catcher
+           #:do-tap
+           #:tap
            #:do-finally
            #:finally))
 
@@ -61,6 +63,7 @@
 
            #:attach
            #:catcher
+           #:tap
            #:finally
 
            #:alet
@@ -74,6 +77,5 @@
            #:all
            #:areduce
            #:afilter
-           #:tap
            #:chain))
 

@@ -199,6 +199,37 @@
     (is (eq val 9))
     (is (eq err nil))))
 
+(test tapping
+  "Tap tap taparoo"
+  (let ((tapped nil)
+        (val nil))
+    (attach
+      (tap (attach (promisify 3)
+             (lambda (x)
+               (+ x 4)))
+        (lambda (x)
+          (setf tapped x)
+          52))
+      (lambda (x)
+        (setf val x)))
+    (is (eq val 7))
+    (is (eq tapped 7))))
+
+(test tapping-error-passthru
+  "Tapping should pass errors through."
+  (let ((err nil)
+        (tapped nil))
+    (catcher
+      (tap
+        (attach (promisify 4)
+          (lambda (x)
+            (+ x 'nope)))
+        (lambda (omg)
+          (setf tapped omg)))
+      (t (e) (setf err e)))
+    (is (typep err 'type-error))
+    (is (null tapped))))
+
 (test finally
   "Finally works"
   (let ((val1 nil)

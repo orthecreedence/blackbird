@@ -267,6 +267,25 @@
          ,@(loop for x in handler-forms collect
              (list (car x) `(let ((,(caadr x) e)) ,@(cddr x))))))))
 
+(defun do-tap (promise tap-fn)
+  "Gives a handler function access to a promise's value but finishes the
+   returned with the values of the given promise (instead of the return values
+   of the given function). This allows installing a read-only hook into the
+   promise chain, useful for logging or other such activities."
+  (with-promise (resolve reject :resolve-fn resolver)
+    (attach-errback promise (lambda (err) (reject err)))
+    (attach promise
+      (lambda (&rest vals)
+        (wait (apply tap-fn vals)
+          (apply resolver vals))))))
+
+(defmacro tap (promise-gen tap-fn)
+  "Gives a handler function access to a promise's value but finishes the
+   returned with the values of the given promise (instead of the return values
+   of the given function). This allows installing a read-only hook into the
+   promise chain, useful for logging or other such activities."
+  `(do-tap (promisify ,promise-gen) ,tap-fn))
+
 (defun do-finally (promise finally-fn)
   "Run the finally-fn whether the given promise has a value or an error."
   (with-promise (resolve reject)
