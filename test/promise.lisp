@@ -230,6 +230,26 @@
     (is (typep err 'type-error))
     (is (null tapped))))
 
+(test tap-finishes-before-continue
+  "Make sure tapping waits on its romise before continuing the chain."
+  (let ((val nil))
+    (as:with-event-loop ()
+      (attach
+        (tap
+          (attach
+            (promise-gen (lambda () 4) :delay .1)
+            (lambda (x) (+ x 4)))
+          (lambda (x)
+            (declare (ignore x))
+            (promise-gen
+              (lambda ()
+                (unless val (setf val 'tapped))
+                'tap))))
+        (lambda (x)
+          (declare (ignore x))
+          (unless val (setf val 'attached)))))
+    (is (eq val 'tapped))))
+
 (test finally
   "Finally works"
   (let ((val1 nil)

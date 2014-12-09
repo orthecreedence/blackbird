@@ -276,8 +276,10 @@
     (attach-errback promise (lambda (err) (reject err)))
     (attach promise
       (lambda (&rest vals)
-        (wait (apply tap-fn vals)
-          (apply resolver vals))))))
+        (attach (apply tap-fn vals)
+          (lambda (&rest args)
+            (declare (ignore args))
+            (apply resolver vals)))))))
 
 (defmacro tap (promise-gen tap-fn)
   "Gives a handler function access to a promise's value but finishes the
