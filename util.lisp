@@ -119,7 +119,7 @@
              ((or :catch :catcher)
               `(do-catch ,promise (lambda ,(cadr op) ,@(cddr op))))
              (:finally
-              `(finally ,promise ,@(cddr op)))
+              `(finally ,promise ,@(cdr op)))
              (t (error (format nil "invalid chain operation: ~a" (car op)))))))
     (let* ((chain (transform-op `(promisify ,promise-gen) (car operations))))
       (dolist (op (cdr operations))
