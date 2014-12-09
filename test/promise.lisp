@@ -244,7 +244,8 @@
             (promise-gen
               (lambda ()
                 (unless val (setf val 'tapped))
-                'tap))))
+                'tap)
+              :delay .1)))
         (lambda (x)
           (declare (ignore x))
           (unless val (setf val 'attached)))))
