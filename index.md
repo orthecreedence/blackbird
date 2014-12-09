@@ -1,5 +1,5 @@
 ---
-title: Documentation
+title: Blackbird promise library
 layout: documentation
 ---
 
@@ -18,25 +18,28 @@ code is doing.
 - [Intro to promises](#intro)
 - [Promises API](#promise-api)
   - [promise](#promise) _class_
-  - [make-promise](#make-promise) _function_
-  - [attach-errback](#attach-errback) _function_
-  - [signal-error](#signal-error) _function_
   - [promisep](#promisep) _function_
-  - [finish](#finish) _function_
   - [promise-finished-p](#promise-finished-p) _method_
-  - [lookup-forwarded-promise](#lookup-forwarded-promise) _function_
+  - [create-promise](#create-promise) _function_
+  - [with-promise](#with-promise) _macro_
+  - [promisify](#promisify) _macro_
   - [attach](#attach) _macro_
+  - [catcher](#catcher) _macro_
+  - [finally](#finally) _macro_
 - [Nicer syntax](#nicer-syntax)
   - [alet](#alet) _macro_
   - [alet*](#alet-star) _macro_
   - [aif](#aif) _macro_
   - [multiple-promise-bind](#multiple-promise-bind) _macro_
   - [wait](#wait) _macro_
+- [Utils](#utils)
   - [adolist](#adolist) _macro_
-- [Error handling](#error-handling)
-  - [promise-handler-case](#promise-handler-case) _macro_
-  - [:promise-debug](#promise-debug) _feature_
-- [Backwards compatibility](#compat)
+  - [amap](#amap) _function_
+  - [all](#all) _function_
+  - [areduce](#areduce) _function_
+  - [afilter](#afilter) _function_
+  - [tap](#tap) _function_
+  - [chain](#chain) _function_
 
 
 <a id="intro"></a>
@@ -51,8 +54,11 @@ Promises not only give an important abstraction for asynchronous programming, bu
 offer opportunities for [syntactic abstraction](#nicer-syntax) that make async
 programming a lot more natural.
 
-Our implementation of promises are great for this because of the following
-reasons:
+The blackbird promise implementation supports the concept of promise chaining,
+meaning values and errors that happen in your computations become available to
+other promises as they progress, allowing you to program naturally even if
+you're doing async operations (which are traditionally callback-based). Here's
+how it's done:
 
 - If a callback is [attached](#attach) to a value that is not a [promise](#promise),
 that callback is called immediated with the value. This makes it so that you can
@@ -63,9 +69,9 @@ bind a callback to either.
 - Calling [attach](#attach) always returns a promise. This returned promise gets
 fired with the *return value of the callback being attached*. So if you have
 Promise A and you attach a callback to it, `attach` returns Promise B. Promise B
-gets [finished](#finish) with the return value(s) from the callback attached to
+gets finished/resolved with the return value(s) from the callback attached to
 Promise A.
-- [Finishing](#finish) a promise with another promise as the first value results
+- Finishing/resolving a promise with another promise as the first value results
 in the callbacks/errbacks from the promise being finished transferring over
 to the promise that is passed as the value. This, in addition to [attach](#attach)
 always returning a promise, makes nesting promises possible. In other words, a
@@ -84,23 +90,20 @@ This is all probably greek, so let's give an example:
 
 (defun promise-calc (x)
   "Asynchronously add 1 to x, returning a promise that will be finished when x is computed."
-  (let ((promise (make-promise)))
-    (as:delay (lambda () (finish promise (+ x 1)))
-              :time 1)
-    promise))
+  (with-promise (resolve reject)
+    (as:delay (lambda () (resolve (+ x 1))) :time 1)))
 
-(as:start-event-loop
-  (lambda ()
-    (let ((promise (attach (promise-calc 0)
-                    (lambda (x)           ;; x is 1 here
-                      (attach (promise-calc x)
-                        (lambda (x)       ;; x is 2 here
-                          (attach (promise-calc x)
-                            (lambda (x)   ;; x is 3 here
-                              (* x 5)))))))))
-      (attach promise
-        (lambda (x)
-          (format t "Final result: ~a" x))))))
+(as:with-event-loop ()
+  (let ((promise (attach (promise-calc 0)
+                   (lambda (x)           ;; x is 1 here
+                     (attach (promise-calc x)
+                       (lambda (x)       ;; x is 2 here
+                         (attach (promise-calc x)
+                           (lambda (x)   ;; x is 3 here
+                             (* x 5)))))))))
+    (attach promise
+      (lambda (x)
+        (format t "Final result: ~a" x)))))
 {% endhighlight %}
 
 This waits 3 seconds then prints:
@@ -111,6 +114,10 @@ Notice how the callback was attached to the top-level promise, but was able to
 get the result computed from many async-levels deep. Not only does this mimick a
 normal call stack a lot closer than CPS, but can be wrapped in macros that make
 the syntax almost natural (note that these macros I speak of are on the way).
+
+It's important to note that a promise can hold either one set of value(s) or one
+error. It cannot hold both, and once it has either a value (or multiple values)
+or an error attached to it, the promise essentially becomes read-only.
 
 <a id="promise-api"></a>
 Promises API
@@ -124,99 +131,6 @@ values, events, etc.
 
 The standard way to create a promise is with [make-promise](#make-promise).
 
-<a id="make-promise"></a>
-### make-promise
-{% highlight cl %}
-(defun make-promise (&key preserve-callbacks (reattach-callbacks t)))
-  => promise
-{% endhighlight %}
-
-Create a promise. Supports persistent callbacks (can be fired more than once) and
-reattaching callbacks to another promise (when this promise is [finished](#finish)
-with another promise as the value).
-
-{% highlight cl %}
-;; example
-(let ((promise (make-promise)))
-  (attach promise
-    (lambda (x)
-      (format t "x is ~a~%" x)))
-  (finish promise 5))
-{% endhighlight %}
-
-<a id="attach-errback"></a>
-### attach-errback
-{% highlight cl %}
-(defun attach-errback (promise errback))
-  => promise
-{% endhighlight %}
-
-This adds an "errback" (an error callback) to the promise, to be called whenever
-[signal-error](#signal-error) is called on the promise. A promise can hold
-multiple errbacks, allowing different pieces of your application to set up
-handling for different events a promise might encounter.
-
-When there are no errbacks attached to a promise, any errors triggered on that
-promise are saved until an errback is added, at which point the errback is called
-with all the saved up errors in the order they were received.
-
-{% highlight cl %}
-;; example
-(let ((promise (make-promise))
-      (socket (tcp-connect "musio.com" 80)))
-  ;; set up our error/event handler
-  (attach-errback promise
-    (lambda (ev)
-      (handler-case (error ev)
-        (tcp-eof () (format t "peer closed socket.~%"))
-        (tcp-timeout () (format t "connection timed out.~%"))
-        (t () (format t "other event: ~a~%" ev)))))
-
-  ;; write out our request
-  (write-socket-data socket (format nil "GET /~c~c" #\return #\newline)
-    :read-cb (lambda (sock data) (finish promise data)))
-
-  ;; attach a cb to our heroic promise
-  (attach promise
-    (lambda (data)
-      (format t "got data: ~a~%" (babel:octets-to-string data)))))
-{% endhighlight %}
-
-<a id="signal-error"></a>
-### signal-error
-{% highlight cl %}
-(defun signal-error (promise condition))
-  => nil
-{% endhighlight %}
-
-Signal an error on the promise. Many async operations will signal events/errors,
-and this allows you to "transfer" these events to a promise. You handle errors
-on a promise by [settin up errbacks](#attach-errback) on the promise.
-
-{% highlight cl %}
-;; example
-(let ((promise (make-promise)))
-  ;; send out a request and finish our promise when we get a response, but also
-  forward any events get to the promise to the handler can process them
-  (tcp-connect "musio.com" 80
-    (lambda (sock data)
-      (finish promise data))
-    (lambda (ev)
-      ;; signal the event on the promise
-      (signal-error promise ev))
-	:data (format nil "GET /~c~c" #\return #\newline))
-
-  ;; attach a callback to the tcp op
-  (attach promise
-    (lambda (data)
-      (format t "got data: ~a~%" (babel:octets-to-string data))))
-
-  ;; handle any events
-  (attach-errback promise
-    (lambda (ev)
-      (format t "ev: ~a~%" ev))))
-{% endhighlight %}
-
 <a id="promisep"></a>
 ### promisep
 {% highlight cl %}
@@ -225,26 +139,6 @@ on a promise by [settin up errbacks](#attach-errback) on the promise.
 {% endhighlight %}
 
 Test if the given object is a promise.
-
-<a id="finish"></a>
-### finish
-{% highlight cl %}
-(defun finish (promise &rest values))
-  => promise
-{% endhighlight %}
-
-Finish a promise with one or more values. When finished, all callbacks attached
-to the promise will be fired, with the given values as their arguments. The same
-promise passed in is returned.
-
-{% highlight cl %}
-;; example
-(let ((promise (make-promise)))
-  (as:delay (lambda () (finish promise 1 2 3)))
-  (attach promise
-    (lambda (x y z)
-      (format t "result: ~a~%" (* x y z)))))
-{% endhighlight %}
 
 <a id="promise-finished-p"></a>
 ### promise-finished-p
@@ -256,19 +150,81 @@ promise passed in is returned.
 This method returns T or NIL depending on whether the given promise has been
 finished.
 
-<a id="lookup-forwarded-promise"></a>
-### lookup-forwarded-promise
+<a id="create-promise"></a>
+### create-promise
 {% highlight cl %}
-(defun lookup-forwarded-promise (promise))
+(defun create-promise (create-fn &key name))
+  => promise
+{% endhighlight %}
+Creates and returns a new promise using the given `create-fn`, which is a
+function of exactly two arguments: a function that can be called with any number
+of values and *finishes* the returned promise, or a function of one argument
+that signals an error on the promise:
+
+{% highlight cl %}
+(create-promise
+  (lambda (resolver rejecter)
+    ;; note that create-promise will catch errors in the form for you, so this
+    ;; handler-case isn't strictly necessary but gives an example of promise
+    ;; rejection
+    (handler-case
+      (let ((my-vals (multiple-value-list (my-operation))))
+        (apply resolver my-vals))
+      (t (e) (funcall rejecter e)))))
+{% endhighlight %}
+
+This syntax can be a little cumbersome, so see [with-promise](#with-promise),
+which cleans things up a bit for you.
+
+<a id="with-promise"></a>
+### with-promise
+{% highlight cl %}
+(defmacro with-promise ((resolve reject
+                           &key (resolve-fn (gensym "resolve-fn"))
+                                (reject-fn (gensym "reject-fn"))
+                                name)
+                           &body body))
   => promise
 {% endhighlight %}
 
-This function takes a promise, follows the chain of forwarding, and returns the
-last promise that the given one forwards to. If no forwarding is set up, then it
-returns the promise that was passed in.
+Much like, [create-promise](#create-promise), but wraps promise creation in a
+nicer form. This is the recommended way to create promises, unless you for some
+reason need the lower-level API of `create-promise`.
 
-The purpose of this function is to allow an app to look at, given a promise, what
-is the *actual* promise that will be operated on.
+Here's an example usage:
+
+{% highlight cl %}
+(with-promise (resolve reject)
+  (handler-case
+    (resolve (my-operation))
+    (t (e) (reject e))))
+{% endhighlight %}
+
+If you need resolve/reject *functions* to apply in `with-promise`, you can
+access them by passing `:resolve-fn` or `:reject-fn`:
+
+{% highlight cl %}
+(with-promise (resolve reject :resolve-fn resolver)
+  (handler-case
+    (let ((vals (multiple-value-list (my-operation))))
+      (apply resolver vals))
+    (t (e) (reject e))))
+{% endhighlight %}
+
+<a id="promisify"></a>
+### promisify
+{% highlight cl %}
+(defmacro promisify (promise-gen))
+  => promise
+{% endhighlight %}
+
+Given any value(s) (or a triggered error), returns a promise either finished
+with those value(s) or failed with the given error:
+{% highlight cl %}
+(promisify 3)                    ; finished promise with the value 3
+(promisify (values "jerry" 28))  ; finished promise with the values "jerry" and 28
+(promisify (error "oh no"))      ; failed promise with the error "oh no"
+{% endhighlight %}
 
 <a id="attach"></a>
 ### attach
@@ -314,6 +270,119 @@ be viewable by the top-level caller.
   (lambda (x)
     (format t "x is ~a~%" x)))
 {% endhighlight %}
+
+<a id="catcher"></a>
+### catcher
+{% highlight cl %}
+(defmacro catcher (promise-gen &rest handler-forms))
+  => new-promise
+{% endhighlight %}
+
+The `catcher` macro is used for catching errors on your promises. It listens for
+any errors on your promise chain and allows you to set up handlers for them. The
+handler syntax is very much like cl's `handler-case`:
+
+{% highlight cl %}
+(catcher
+  (attach (my-dangerous-op)
+    (lambda (x)
+      (format t "danger is my middle name: ~a~%" x)))
+  (type-error (e)
+    (format t "got a type error! ~a~%" e))
+  (t (e)
+    (format t "unknown error: ~a~%" e)))
+{% endhighlight %}
+
+Notice that like [attach](#attach), `catcher` returns a new promise that
+resolves to either
+
+- the value of the promise it wrapped, in the case no error happened
+- the value returned by its handler form, if an error occurred
+
+<a id="finially"></a>
+### finally
+{% highlight cl %}
+(defmacro finally (promise-gen &body body))
+  => new-promise
+{% endhighlight %}
+
+The `finally` macro works much like [attach](#attach) and [catcher](#catcher) in
+that it attaches to a promise and resolves the promise it returns to the value
+of its body form. However, its body form is called whether or not the given
+promise resolves or is rejected...think of it as the `unwind-protect` equivalent
+of promises. It's form runs whether the promise chain has an error or a value.
+It can be used to close connections or clean up resources that are no longer
+needed.
+
+{% highlight cl %}
+(let ((conn nil))
+  (finally
+    ;; catch any db errors
+    (catcher
+      ;; grab a connection and get some users
+      (attach (get-db-connection)
+        (lambda (db)
+          (setf conn db)
+          (attach (get-users-from-db conn)
+            (lambda (users)
+              (do-something-with-users)))))
+      (connection-failed (e)
+        (format t "bad connection! ~a~%" e))
+      (wrong-db (e)
+        (format t "i'm sorry, but the users are in another db ~a~%" e))
+      (t (e)
+        (format t "unknown error: ~a~%" e)))
+    ;; always close the db, rain or shine
+    (when conn
+      (close-db-conn))))
+{% endhighlight %}
+
+Note that we can use `finally` to close up the database whether things when well
+or not. Also note how annoying it is to type out all those `attach` calls. Fear
+not, [better syntax awaits](#nicer-syntax).
+
+{% comment %}
+-------------------------
+<a id="attach-errback"></a>
+### attach-errback
+{% highlight cl %}
+(defun attach-errback (promise errback))
+  => promise
+{% endhighlight %}
+
+This adds an "errback" (an error handler) to the promise, to be called whenever
+an error occurs on the promise. A promise can hold multiple errbacks, allowing
+different pieces of your application to set up handling for different events a
+promise might encounter.
+
+When there are no errbacks attached to a promise, any error triggered on that
+promise is saved until an errback is added, at which point the errback is called
+with that error.
+
+{% highlight cl %}
+;; example
+(let ((promise (make-promise))
+      (socket (tcp-connect "musio.com" 80)))
+  ;; set up our error/event handler
+  (attach-errback promise
+    (lambda (ev)
+      (handler-case (error ev)
+        (tcp-eof () (format t "peer closed socket.~%"))
+        (tcp-timeout () (format t "connection timed out.~%"))
+        (t () (format t "other event: ~a~%" ev)))))
+
+  ;; write out our request
+  (write-socket-data socket (format nil "GET /~c~c" #\return #\newline)
+    :read-cb (lambda (sock data) (finish promise data)))
+
+  ;; attach a cb to our heroic promise
+  (attach promise
+    (lambda (data)
+      (format t "got data: ~a~%" (babel:octets-to-string data)))))
+{% endhighlight %}
+-------------------------
+{% endcomment %}
+
 
 <a id="nicer-syntax"></a>
 Nicer syntax
@@ -460,6 +529,13 @@ want to know when an operation has finished but don't care about the result.
   (format t "Command finished.~%"))
 {% endhighlight %}
 
+<a id="utils"></a>
+Utils
+-----
+The following utility functions allow us to easily perform operations over lists
+of values/promises, or promises of lists of values/promises (it's turtles all
+the way down).
+
 <a id="adolist"></a>
 ### adolist
 {% highlight cl %}
@@ -500,116 +576,64 @@ Here are some toy examples:
     (finish promise)))
 {% endhighlight %}
 
-<a id="error-handling"></a>
-Error handling
---------------
-All the wonderful [syntax macros](#nicer-syntax) in the world aren't going to do
-you any good if you can't handle errors and conditions properly. The error
-handling for promises closely follows how you would handle errors in native lisp.
-
-<a id="promise-handler-case"></a>
-### promise-handler-case
+<a id="amap"></a>
+### amap
 {% highlight cl %}
-(defmacro promise-handler-case (body-form &rest error-forms))
-  => body-form-return
+(defun amap (function promise-list))
+  => new-promise
 {% endhighlight %}
 
-This macro wraps any of the above macros (`attach`, `alet`, `alet*`,
-`multiple-promise-bind`, `wait-for`) with `handler-case` like error handling.
+Maps over a list of values (or promises of values) and runs the given function
+on each value, resolving its returned promise as the list of mapped values. Note
+they if `function` returns a promise, `amap` waits for the promise to resolve
+before continuing, allowing you to run promise-returning operations on all the
+values in the collection.
 
-It works not only on the top-level forms, but also on each form within the above
-macros that generates a promise, meaning that a single handler form can set up
-error handling for all the sub-forms, even if the stack has unwound.
-
-Note that `promise-handler-case` will only work on the forms it wraps (ie the
-lexical scope). If you leave via a function call or similar, it *will only catch
-errors that occur in that function if they are generated synchronously*. This is
-probably the main difference between `handler-case` and `promise-handler-case`.
-If you want to call a function that operates asynchronously from *within* a
-`promise-handler-case` macro, make sure that function sets up its own error
-handlers.
+Note that an error on *any* of the promises being iterated will signal an error
+on the promise returned from `amap`.
 
 {% highlight cl %}
-;; simple example
-(promise-handler-case
-  (alet ((record (get-record-from-server)))
-    (format t "got record: ~a~%" record))
-  (event-error (e)
-    (format t "oh no, an error.~%")))
-
-;; nesting example
-
-(defun process-results (x y)
-  ;; any errors triggered on this stack will be caught. any errors occuring
-  ;; after (calculate-z-from-server ...) returns will NOT NOT NOT be caught.
-  (alet ((z (calculate-z-from-server x y)))
-    (format t "z is ~a~%" z)))
-
-(promise-handler-case
-  (alet ((sock (connect-to-server)))
-    (promise-handler-case
-      (multiple-promise-bind (id name)
-          (get-user-from-server :socket sock)
-        (alet* ((x (get-x-from-server :socket sock))
-                (y (get-y-from-server :socket sock)))
-          (format t "x+y: ~a~%" (+ x y))
-          (process-results x y)))
-      (type-error (e)
-        (format t "Got a type error, x or y possibly isn't a number: ~a~%" e))))
-  (tcp-error (e)
-    (format t "Error connecting to server: ~a~%" e))
-  (event-error (e)
-    (format t "Got an error event: ~a~%" e))
-  (t (e)
-    (format t "Got general error: ~a~%" e)))
+(attach
+  (amap (lambda (x)
+          (promisify (+ x 7)))
+        (promisify (list 1 2 (promisify 3))))
+  (lambda (x)
+    (format t "x is: ~a~%" x)))  ; prints "x is (8 9 10)"
 {% endhighlight %}
 
-In the above, if `x` or `y` are not returned as numbers, it will be caught by
-the `(type-error ...)` handler. If some unknown error occurs anywhere inside the
-top-level `promise-handler-case`, the outer `(t (e) ...)` general error handler
-will get triggered (even though there's a `promise-handler-case` inside it).
+<a id="all"></a>
+### all
+{% highlight cl %}
+(defun all (promise-list))
+  => new-promise
+{% endhighlight %}
 
-If `process-results` signals an error, it will only be caught by the
-`promise-handler-case` forms if it spawned no asynchronous events _or_ if any
-errors signaled are done so on the current stack (ie synchronously, *not*
-asynchronously).
+Waits on all of the given values in the `promise-list` to complete before
+resolving with the list of all computed values. Like [amap](#amap), the `promise-list`
+can be a promise to a list of promises. All will be resolved before continuing.
 
-Really, if you want to call out to another function that performs asynchronous
-operations from within a `promise-handler-case`, make sure that function is
-perfectly capable of handling its own errors without relying on the calling form
-to catch them *OR ELSE*.
+Note that an error on *any* of the promises being iterated will signal an error
+on the promise returned from `amap`.
 
-<a id="promise-debug"></a>
-### :promise-debug
-If this keyword is present in `*features*` when compiling your app, *all* promise
-error handling is turned off (ie [promise-handler-case](#promise-handler-case)
-doesn't catch any errors), and [signal-error](#signal-error) will throw the given
-condition (instead of pushing it onto the promise errors array).
+{% highlight cl %}
+(attach (all (promisify (list (promisify 1) (promisify 2) 3)))
+  (lambda (vals)
+    (format t "vals: ~a~%" vals)))  ; prints "vals: (1 2 3)"
+{% endhighlight %}
 
-This makes it (in some cases) a lot easier to debug an app that has layers upon
-layers of async. Sometimes it can be tricky to see where a particular error is
-coming from and it makes sense to turn off *all* error handling and just let
-things bubble up to the top level.
+<a id="areduce"></a>
+### areduce
+coming soon
 
-Note that if you push `:promise-debug` onto `*features*`, you have to recompile
-your app (since it works on the macro level).
+<a id="afilter"></a>
+### afilter
+coming soon
 
-<a id="compat"></a>
-Backwards compatibility
------------------------
-Blackbird is the successor to cl-async-future. In fact, the API is incredibly
-similar, except for renaming "future" to "promise" and renaming the `wait-for`
-macro to `wait`.
+<a id="tap"></a>
+### tap
+coming soon
 
-Because a number of libraries depend on cl-async-future but may want to switch
-to blackbird (or not), cl-async-future has been re-written to be a compatibility
-layer over blackbird. This means that whenever you use cl-async-future, you're
-actually using blackbird under the hood. This is imnportant because your app
-can use the same promise objects from another app even if you're using
-cl-async-future and the other app is using blackbird (the libraries have
-interchangable promise objects).
-
-So for users of cl-async-future, there's no upgrade needed. You can continue
-using it, and even gain access to incremental improvements that go into
-blackbird.
+<a id="chain"></a>
+### chain
+coming soon
 
