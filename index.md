@@ -25,6 +25,7 @@ code is doing.
   - [promisify](#promisify) _macro_
   - [attach](#attach) _macro_
   - [catcher](#catcher) _macro_
+  - [tap](#tap) _macro_
   - [finally](#finally) _macro_
 - [Nicer syntax](#nicer-syntax)
   - [alet](#alet) _macro_
@@ -38,7 +39,6 @@ code is doing.
   - [all](#all) _function_
   - [areduce](#areduce) _function_
   - [afilter](#afilter) _function_
-  - [tap](#tap) _function_
   - [chain](#chain) _function_
 
 
@@ -300,6 +300,41 @@ resolves to either
 
 - the value of the promise it wrapped, in the case no error happened
 - the value returned by its handler form, if an error occurred
+
+<a id="tap"></a>
+### tap
+{% highlight cl %}
+(defmacro tap (promise-gen tap-fn))
+  => new-promise
+{% endhighlight %}
+
+Tap is special because it hooks into a promise chain like [attach](#attach),
+however instead of resolving to the return value(s) of its given function, `tap`
+just forwards the value(s)/error it inherited from the promise given in
+`promise-gen` once it completes.
+
+It's important to note that the promise chain waits for `tap` to complete if it
+returns a promise, however the chain continues as if the original promise was
+given back. In other words, `tap` injects itself into the chain without actually
+changing any of the values.
+
+This can be useful for logging or spawning actions whos values you don't really
+need *but* you need to complete before the chain continues.
+
+{% highlight cl %}
+(attach
+  (tap
+    (attach (promisify 4)
+      (lambda (x) (+ x 3)))
+    ;; x is 7 here, but stays 7 even though (format ...) returns nil
+    (lambda (x) (format t "x is ~a~%" x)))
+  (lambda (x)
+    ;; continue with our addition
+    (+ x 12)))
+{% endhighlight %}
+
+Notice we got what amounts to read-only access to the values in the promise, and
+we logged them out without worrying about polluting the values.
 
 <a id="finally"></a>
 ### finally
@@ -631,10 +666,6 @@ docs coming soon
 ### afilter
 docs coming soon
 
-<a id="tap"></a>
-### tap
-docs coming soon
-
 <a id="chain"></a>
 ### chain
 {% highlight cl %}
@@ -668,13 +699,11 @@ up [catcher](#catcher)/[finally](#finally) wrappers at the end of your chain.
 
 Possible keyword functions for `chain` are:
 
-- `(:attach (binding1 binding2 ...) body-form)`  
-(`:then` can be used in place of `:attach`)
+- `(:attach/:then (binding1 binding2 ...) body-form)`  
 - `(:map (binding) body-form)`
 - `(:reduce (val accumulator intial) body-form)`
 - `(:filter (val) body-form)`
 - `(:all)`
-- `(:catcher (error) body-form)`  
-(`:catch` can be used in place of `:catcher`)
+- `(:catcher/:catch (error) body-form)`  
 - `(:finally body-form)`
 
