@@ -625,15 +625,15 @@ on the promise returned from `amap`.
 
 <a id="areduce"></a>
 ### areduce
-coming soon
+docs coming soon
 
 <a id="afilter"></a>
 ### afilter
-coming soon
+docs coming soon
 
 <a id="tap"></a>
 ### tap
-coming soon
+docs coming soon
 
 <a id="chain"></a>
 ### chain
