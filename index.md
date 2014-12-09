@@ -637,5 +637,44 @@ coming soon
 
 <a id="chain"></a>
 ### chain
-coming soon
+{% highlight cl %}
+(defmacro chain (promise-gen &body operations))
+  => new-promise
+{% endhighlight %}
+
+This lets us chain operations together with a flatter syntax, making it easier
+to handle longer promise chains.
+
+{% highlight cl %}
+(chain (get-user 69)
+  (:attach (user)
+    (calculate-favorite-numbers (gethash "name" user)))
+  (:map (x)
+    (+ x 5))
+  (:attach (favs)
+    (format t "users favorite numbers: ~a~%" favs))
+  (:catcher (e)
+    (format t "error! ~a~%" e))
+  (:finally ()
+    (delete-user 69)))
+{% endhighlight %}
+
+Notice how our chain has a top-down syntax vs the more lispy inside-out syntax.
+Which you prefer is a matter of preference, but chain can conceivably used to
+string together many simple operations a lot more clearly than the alternative.
+It's important to note that [alet](#alet)/[alet*](#alet-star) could just as
+easily handle most of the binding stuff, the real utility is being able to set
+up [catcher](#catcher)/[finally](#finally) wrappers at the end of your chain.
+
+Possible keyword functions for `chain` are:
+
+- `(:attach (binding1 binding2 ...) body-form)`  
+(`:then` can be used in place of `:attach`)
+- `(:map (binding) body-form)`
+- `(:reduce (val accumulator intial) body-form)`
+- `(:filter (val) body-form)`
+- `(:all)`
+- `(:catcher (error) body-form)`  
+(`:catch` can be used in place of `:catcher`)
+- `(:finally body-form)`
 
