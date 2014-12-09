@@ -66,15 +66,17 @@ attach a callback to anything: a promise or a value, and the end result is the
 same. This way, the distiction between CPS and normal, stack-based programming
 fades slightly because a function can return a promise or a value, and you can
 bind a callback to either.
-- Calling [attach](#attach) always returns a promise. This returned promise gets
+- Calling [attach](#attach), [catcher](#catcher), or [finally](#finally)
+always returns a promise. This returned promise gets
 fired with the *return value of the callback being attached*. So if you have
 Promise A and you attach a callback to it, `attach` returns Promise B. Promise B
 gets finished/resolved with the return value(s) from the callback attached to
 Promise A.
 - Finishing/resolving a promise with another promise as the first value results
 in the callbacks/errbacks from the promise being finished transferring over
-to the promise that is passed as the value. This, in addition to [attach](#attach)
-always returning a promise, makes nesting promises possible. In other words, a
+to the promise that is passed as the value. This, in addition to
+[attach](#attach)/[catcher](#catcher)/[finally](#finally)
+always returning a promise, makes chaining promises possible. In other words, a
 promise can result in a promise which results in a promise, and if the final promise
 is finished with a value, the callbacks attached to the first (top-level) promise
 will be called with this value. This provides what's almost a call stack for
@@ -237,8 +239,8 @@ This macro attaches a callback to a promise such that once the promise computes,
 the callback will be called with the promise's finished value(s) as its
 arguments.
 
-`attach` takes two arguments, `promise-gen` and `cb`. `promise-gen` is a form that
-*can* (but is not required to) return a promise. If the first value of
+`attach` takes two arguments, `promise-gen` and `callback`. `promise-gen` is a
+form that *can* (but is not required to) return a promise. If the first value of
 `promise-gen`'s return values is a promise, the callback given is attached to that
 promise to be fired when the promise's value(s) are finished.  If the first item
 in `promise-gen` is *not* a `promise` class, the _given callback is fired
@@ -253,16 +255,16 @@ If `attach` is called on a promise that has already been finished, it fires
 the given callback immediately with the promise's value(s).
 
 `attach` returns one value: a promise that is finished with the return values
-of the given callback once it is fired. So the original promise fires, the
+of the given callback once it completes. So the original promise fires, the
 callback gets called, and then the promise that was returned from `attach` is
-fired with the return values from the callback.
+resolved with the return values from the callback.
 
-Also note that if a `promise` is [finished](#finish) with another promise as the
+Also note that if a `promise` is finished/resolved with another promise as the
 first value, the original promise's callbacks/errorbacks are _transfered_ to
 the new promise. This, on top of `attach` always returning a promise, makes
-possible some incredible syntactic abstractions which can somewhat mimick non
-CPS style by allowing the results from async operations several levels deep to
-be viewable by the top-level caller.
+possible some nice syntactic abstractions which can somewhat mimick non CPS
+style by allowing the results from async operations several levels deep to be
+viewable by the top-level caller.
 
 {% highlight cl %}
 ;; example
@@ -299,7 +301,7 @@ resolves to either
 - the value of the promise it wrapped, in the case no error happened
 - the value returned by its handler form, if an error occurred
 
-<a id="finially"></a>
+<a id="finally"></a>
 ### finally
 {% highlight cl %}
 (defmacro finally (promise-gen &body body))
@@ -310,7 +312,7 @@ The `finally` macro works much like [attach](#attach) and [catcher](#catcher) in
 that it attaches to a promise and resolves the promise it returns to the value
 of its body form. However, its body form is called whether or not the given
 promise resolves or is rejected...think of it as the `unwind-protect` equivalent
-of promises. It's form runs whether the promise chain has an error or a value.
+of promises. Its form runs whether the promise chain has an error or a value.
 It can be used to close connections or clean up resources that are no longer
 needed.
 
@@ -325,7 +327,7 @@ needed.
           (setf conn db)
           (attach (get-users-from-db conn)
             (lambda (users)
-              (do-something-with-users)))))
+              (do-something-with-users users)))))
       (connection-failed (e)
         (format t "bad connection! ~a~%" e))
       (wrong-db (e)
@@ -337,7 +339,7 @@ needed.
       (close-db-conn))))
 {% endhighlight %}
 
-Note that we can use `finally` to close up the database whether things when well
+Note that we can use `finally` to close up the database whether things went well
 or not. Also note how annoying it is to type out all those `attach` calls. Fear
 not, [better syntax awaits](#nicer-syntax).
 
