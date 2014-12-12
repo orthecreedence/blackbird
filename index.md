@@ -202,6 +202,22 @@ Here's an example usage:
     (t (e) (reject e))))
 {% endhighlight %}
 
+Note that `resolve` acts differently depending on the number of arguments passed
+to it. If multiple arguments are passed, the promise is finished with the given
+values. However, if only one argument is passed, the promise is finished with
+*the value(s) that the given form returns*. In other words:
+
+{% highlight cl %}
+(with-promise (resolve reject)
+  (resolve 1 2 3))
+(with-promise (resolve reject)
+  (resolve (values 1 2 3)))
+(with-promise (resolve reject)
+  (resolve (funcall (lambda () (values 1 2 3)))))
+{% endhighlight %}
+
+...will all result in the same promise (finished with the values 1, 2, and 3).
+
 If you need resolve/reject *functions* to apply in `with-promise`, you can
 access them by passing `:resolve-fn` or `:reject-fn`:
 
