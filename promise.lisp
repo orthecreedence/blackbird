@@ -85,9 +85,12 @@
   `(create-promise 
      (lambda (,resolve-fn ,reject-fn)
        (declare (ignorable ,reject-fn))
-       (flet ((,resolve (&rest args) (apply ,resolve-fn args))
-              (,reject (condition) (funcall ,reject-fn condition)))
-         ,@body))
+       (macrolet ((,resolve (&rest args)
+                    (if (= 1 (length args))
+                        `(apply ,',resolve-fn (multiple-value-list ,(car args)))
+                        `(apply ,',resolve-fn ',args))))
+         (flet ((,reject (condition) (funcall ,reject-fn condition)))
+           ,@body)))
      :name ,name))
 
 (defun do-promisify (fn &key name)

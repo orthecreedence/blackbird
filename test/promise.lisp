@@ -102,6 +102,22 @@
       (attach-errback promise (lambda (e) (setf err e))))
     (is (typep err 'error))))
 
+(test with-promise-values
+  "Test that with-promise can handle being passed multiple values, or one form
+   that evaluates to multiple values."
+  (let ((vals nil))
+    (attach (with-promise (resolve reject)
+              (resolve 1 2 3))
+      (lambda (&rest promise-vals)
+        (setf vals promise-vals)))
+    (is (equalp vals '(1 2 3))))
+  (let ((vals nil))
+    (attach (with-promise (resolve reject)
+              (resolve (funcall (lambda () (values 1 2 3)))))
+      (lambda (&rest promise-vals)
+        (setf vals promise-vals)))
+    (is (equalp vals '(1 2 3)))))
+
 (test promise-alet
   "Test that the alet macro functions correctly"
   (let ((time-start nil))  ; tests that alet bindings happen in parallel
