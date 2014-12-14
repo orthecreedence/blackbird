@@ -124,14 +124,14 @@
                                      binding))))
     `(attach ,promise-gen
        (lambda (&rest ,args)
-         (destructuring-bind ,bindings ,args
+         (destructuring-bind ,(nconc bindings '(&rest _ignore)) ,args
            ,(if ignore-bindings
                 ;; ignore any nil bindings
-                `(declare (ignore ,@ignore-bindings))
+                `(declare (ignore ,@ignore-bindings _ignore))
                 ;; pointless declaration so we can have other declarations in
                 ;; the body if desired (so we return any declaration other than
                 ;; nil)
-                `(declare (type list ,args)))
+                `(declare (ignore _ignore)))
            ,@body)))))
 
 (defmacro wait (promise-gen &body body)
