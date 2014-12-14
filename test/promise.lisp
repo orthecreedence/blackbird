@@ -413,3 +413,32 @@
             (is (eq val nil))))
       (is (eq val 12)))))
 
+(test async-error
+  "Test proper handling of async errors."
+  ;; NOTE that we're testing an error that cropped up when reattaching errbacks
+  ;; from one promise to another
+  (let ((*promise-finish-hook*
+          (lambda (finish-fn)
+            (as:delay finish-fn :time .1)))
+        (val nil)
+        (err nil))
+    (flet ((do-reject ()
+             (with-promise (resolve reject)
+               (as:with-delay ()
+                 (reject (make-instance 'error)))))
+           (do-resolve ()
+             (with-promise (resolve reject)
+               (as:with-delay ()
+                 (resolve 1)))))
+      (as:with-event-loop ()
+        (catcher
+          (attach (attach (do-resolve)
+                    (lambda (omg)
+                      (declare (ignore omg))
+                      (do-reject)))
+            (lambda (test-val)
+              (setf val test-val)))
+          (t (e) (setf err e)))))
+    (is (eq val nil))
+    (is (typep err 'error))))
+
