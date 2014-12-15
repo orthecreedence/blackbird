@@ -110,7 +110,7 @@
            ,true-form
            ,false-form))))
 
-(defmacro multiple-promise-bind (bindings promise-gen &body body)
+(defmacro multiple-promise-bind ((&rest bindings) promise-gen &body body)
   "Like multiple-value-bind, but instead of a form that evaluates to multiple
    values, takes a form that generates a promise."
   (let* ((args (gensym "args"))
@@ -124,15 +124,21 @@
                                      binding))))
     `(attach ,promise-gen
        (lambda (&rest ,args)
-         (destructuring-bind ,(nconc bindings '(&rest _ignore)) ,args
-           ,(if ignore-bindings
-                ;; ignore any nil bindings
-                `(declare (ignore ,@ignore-bindings _ignore))
-                ;; pointless declaration so we can have other declarations in
-                ;; the body if desired (so we return any declaration other than
-                ;; nil)
-                `(declare (ignore _ignore)))
-           ,@body)))))
+         (let (,@bindings)
+           ;; ignore any nil bindings
+           ,(when ignore-bindings
+              `(declare (ignore ,@ignore-bindings)))
+           ;; set the values into our bindings
+           ,@(loop for b in bindings collect
+                   (if (member b ignore-bindings)
+                     `(setf ,args (cdr ,args))
+                     `(setf ,b (car ,args)
+                            ,args (cdr ,args))))
+           ;; wrap in another let in case users want to add their own declare
+           (let (,@(loop for b in bindings
+                         unless (member b ignore-bindings)
+                         collect (list b b)))
+             ,@body))))))
 
 (defmacro wait (promise-gen &body body)
   "Wait for a promise to finish, ignoring any values it returns. Can be useful
