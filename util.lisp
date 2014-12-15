@@ -106,7 +106,7 @@
   (flet ((transform-op (promise op)
            (case (car op)
              ((or :then :attach)
-              `(attach ,promise (lambda ,(cadr op) ,@(cddr op))))
+              `(multiple-promise-bind ,(cadr op) ,promise ,@(cddr op)))
              (:map
               `(amap (lambda ,(cadr op) ,@(cddr op)) ,promise))
              (:reduce
