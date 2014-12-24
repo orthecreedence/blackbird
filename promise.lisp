@@ -82,9 +82,9 @@
        (do-something (lambda (result)
                        (resolve result))))
        => promise"
-  `(create-promise 
+  `(create-promise
      (lambda (,resolve-fn ,reject-fn)
-       (declare (ignorable ,reject-fn))
+       (declare (ignorable ,resolve-fn ,reject-fn))
        (macrolet ((,resolve (&rest args)
                     (if (= 1 (length args))
                         `(apply ,',resolve-fn (multiple-value-list ,(car args)))
