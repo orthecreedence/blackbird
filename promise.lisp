@@ -90,6 +90,7 @@
                         `(apply ,',resolve-fn (multiple-value-list ,(car args)))
                         `(apply ,',resolve-fn ',args))))
          (flet ((,reject (condition) (funcall ,reject-fn condition)))
+           (declare (ignorable #',reject))
            ,@body)))
      :name ,name))
 
