@@ -30,7 +30,7 @@
     :documentation "Holds the finished value(s) of the promise."))
   (:documentation
     "Defines a class which represents a value that MAY be ready sometime in the
-     promise. Also supports attaching callbacks to the promise such that they will
+     future. Also supports attaching callbacks to the promise such that they will
      be called with the computed value(s) when ready."))
 
 (defun wrap-callback (callback)
