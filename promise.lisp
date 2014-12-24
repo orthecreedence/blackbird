@@ -262,8 +262,8 @@
       (lambda (e)
         (handler-case
           (resolve (funcall handler-fn e))
-          (condition (c) (reject c)))))
-    (resolve promise)))
+          (error (err) (reject err)))))
+    (attach promise resolve-fn)))
 
 (defmacro catcher (promise-gen &rest handler-forms)
   "Catch errors in the promise chain and run a handler function when caught."
@@ -305,8 +305,7 @@
       (lambda (&rest _)
         (declare (ignore _))
         (resolve (funcall finally-fn))))))
-  
+
 (defmacro finally (promise-gen &body body)
   "Run the body form whether the given promise has a value or an error."
   `(do-finally (promisify ,promise-gen) (lambda () ,@body)))
-
