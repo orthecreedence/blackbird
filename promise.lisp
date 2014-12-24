@@ -30,7 +30,7 @@
     :documentation "Holds the finished value(s) of the promise."))
   (:documentation
     "Defines a class which represents a value that MAY be ready sometime in the
-     promise. Also supports attaching callbacks to the promise such that they will
+     future. Also supports attaching callbacks to the promise such that they will
      be called with the computed value(s) when ready."))
 
 (defun wrap-callback (callback)
@@ -82,14 +82,15 @@
        (do-something (lambda (result)
                        (resolve result))))
        => promise"
-  `(create-promise 
+  `(create-promise
      (lambda (,resolve-fn ,reject-fn)
-       (declare (ignorable ,reject-fn))
+       (declare (ignorable ,resolve-fn ,reject-fn))
        (macrolet ((,resolve (&rest args)
                     (if (= 1 (length args))
                         `(apply ,',resolve-fn (multiple-value-list ,(car args)))
                         `(apply ,',resolve-fn ',args))))
          (flet ((,reject (condition) (funcall ,reject-fn condition)))
+           (declare (ignorable #',reject))
            ,@body)))
      :name ,name))
 
@@ -262,8 +263,8 @@
       (lambda (e)
         (handler-case
           (resolve (funcall handler-fn e))
-          (condition (c) (reject c)))))
-    (resolve promise)))
+          (error (err) (reject err)))))
+    (attach promise resolve-fn)))
 
 (defmacro catcher (promise-gen &rest handler-forms)
   "Catch errors in the promise chain and run a handler function when caught."
@@ -305,8 +306,7 @@
       (lambda (&rest _)
         (declare (ignore _))
         (resolve (funcall finally-fn))))))
-  
+
 (defmacro finally (promise-gen &body body)
   "Run the body form whether the given promise has a value or an error."
   `(do-finally (promisify ,promise-gen) (lambda () ,@body)))
-

@@ -201,7 +201,7 @@
       (error (e) (setf err e)))
     (is (typep err 'error))
     (is (eq val nil))))
-              
+
 (test catcher-passthru
   "Test catchers will forward values if no error is caught."
   (let ((err nil)
@@ -318,7 +318,7 @@
                            (with-promise (res rej) (res 4))
                            5))))
         (res nil))
-    (attach 
+    (attach
       (amap (lambda (x) (with-promise (res rej) (res (+ x 5)))) vals)
       (lambda (x) (setf res x)))
     (is (equalp res (list 8 9 10)))))
@@ -356,7 +356,7 @@
                            (with-promise (res rej) (res 4))
                            5))))
         (res nil))
-    (attach 
+    (attach
       (afilter (lambda (x) (with-promise (res rej) (res (oddp x)))) vals)
       (lambda (x) (setf res x)))
     (is (equalp res (list 3 5)))))
@@ -458,3 +458,35 @@
     (is (eq val nil))
     (is (typep err 'error))))
 
+(test catch-then
+  (multiple-value-bind (log)
+      (async-let ((log '()))
+        (bb:chain
+          (bb:with-promise (resolve reject)
+            (reject (make-instance 'error)))
+          (:catch (c)
+            (push (list :caught1 (type-of c)) log)
+            42)
+          (:then (x)
+            (push (list :ok x) log))
+          (:catch (c)
+            (push (list :caught2 (type-of c)) log))))
+    (is (equal '((:caught1 error) (:ok 42))
+               (nreverse log)))))
+
+(test catch-then/delayed
+  (multiple-value-bind (log)
+      (async-let ((log '()))
+        (bb:chain
+          (bb:with-promise (resolve reject)
+            (as:with-delay ()
+              (reject (make-instance 'error))))
+          (:catch (c)
+            (push (list :caught1 (type-of c)) log)
+            42)
+          (:then (x)
+            (push (list :ok x) log))
+          (:catch (c)
+            (push (list :caught2 (type-of c)) log))))
+    (is (equal '((:caught1 error) (:ok 42))
+               (nreverse log)))))
