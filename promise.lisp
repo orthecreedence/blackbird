@@ -41,7 +41,8 @@
                (vars (append bound (remove-if #'boundp all-vars)))
                (vals (mapcar #'symbol-value bound)))
           #'(lambda (&rest args)
-              (progv vars vals (apply callback args)))))))
+              (let ((*promise-keep-specials* all-vars))
+                (progv vars vals (apply callback args))))))))
 
 (defmethod print-object ((promise promise) s)
   (print-unreadable-object (promise s :type t :identity t)
