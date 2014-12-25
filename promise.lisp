@@ -297,15 +297,20 @@
 
 (defun do-finally (promise finally-fn)
   "Run the finally-fn whether the given promise has a value or an error."
-  (with-promise (resolve reject)
+  (with-promise (resolve reject :resolve-fn resolver)
     (attach-errback promise
-      (lambda (&rest _)
-        (declare (ignore _))
-        (resolve (funcall finally-fn))))
+      (lambda (err)
+        (attach (funcall finally-fn)
+          (lambda (&rest _)
+            (declare (ignore _))
+            (reject err)))))
     (attach promise
-      (lambda (&rest _)
-        (declare (ignore _))
-        (resolve (funcall finally-fn))))))
+      (lambda (&rest args)
+        (attach (funcall finally-fn)
+          (lambda (&rest _)
+            (declare (ignore _))
+            (apply resolver args)))))))
+  
 
 (defmacro finally (promise-gen &body body)
   "Run the body form whether the given promise has a value or an error."
