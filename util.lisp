@@ -14,12 +14,12 @@
                       (finish ,promise-sym nil)
                       (return-from ,next-fn))
                     (setf ,items-sym (cdr ,items-sym))
-                    (promise-handler-case
+                    (catcher
                       ,(if promise-bind
                            `(let ((,promise-bind (make-promise)))
-                              (wait-for ,promise-bind (,next-fn))
+                              (wait ,promise-bind (,next-fn))
                               ,@body)
-                           `(wait-for (progn ,@body) (,next-fn)))
+                           `(wait (progn ,@body) (,next-fn)))
                       (t (e) (signal-error ,promise-sym e))))))
          (,next-fn))
        ,promise-sym)))
