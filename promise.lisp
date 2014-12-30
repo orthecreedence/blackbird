@@ -1,5 +1,9 @@
 (in-package :blackbird-base)
 
+(defvar *debug-on-error* nil
+  "If t, will not catch errors passing through the handlers and will let them
+   bubble up to the debugger.")
+
 (defvar *promise-keep-specials* '()
   "Names of special variables to be preserved during promise callbacks")
 
@@ -67,9 +71,13 @@
   (let* ((promise (make-promise :name name))
          (resolve-fn (lambda (&rest vals) (apply 'finish (append (list promise) vals))))
          (reject-fn (lambda (condition) (signal-error promise condition))))
-    (handler-case
-      (funcall create-fn resolve-fn reject-fn)
-      (condition (c) (signal-error promise c)))
+    (block catcher
+      (handler-bind
+          ((error (lambda (e)
+                    (unless *debug-on-error*
+                      (funcall reject-fn e)
+                      (return-from catcher)))))
+        (funcall create-fn resolve-fn reject-fn)))
     promise))
 
 (defmacro with-promise ((resolve reject
@@ -98,20 +106,22 @@
 (defun do-promisify (fn &key name)
   "Turns any value or set of values into a promise, unless a promise is passed
    in which case it is returned."
-  (handler-case
-    (let* ((vals (multiple-value-list (funcall fn)))
-           (promise (car vals)))
-      (if (promisep promise)
-          promise
-          (create-promise
-            (lambda (resolve reject)
-              (declare (ignore reject))
-              (apply resolve vals))
-            :name name)))
-    (condition (e)
-      (let ((promise (make-promise :name name)))
-        (signal-error promise e)
-        promise))))
+  (block catcher
+    (handler-bind
+        ((error (lambda (e)
+                  (unless *debug-on-error*
+                    (let ((promise (make-promise)))
+                      (signal-error promise e)
+                      (return-from catcher promise))))))
+      (let* ((vals (multiple-value-list (funcall fn)))
+             (promise (car vals)))
+        (if (promisep promise)
+            promise
+            (create-promise
+              (lambda (resolve reject)
+                (declare (ignore reject))
+                (apply resolve vals))
+              :name name))))))
 
 (defmacro promisify (promise-gen)
   "Turns any value or set of values into a promise, unless a promise is passed
@@ -262,9 +272,12 @@
   (with-promise (resolve reject :resolve-fn resolve-fn)
     (attach-errback promise
       (lambda (e)
-        (handler-case
-          (resolve (funcall handler-fn e))
-          (error (err) (reject err)))))
+        (block catcher
+          (handler-bind
+              ((error (lambda (e)
+                        (unless *debug-on-error*
+                          (return-from catcher (reject e))))))
+            (resolve (funcall handler-fn e))))))
     (attach promise resolve-fn)))
 
 (defmacro catcher (promise-gen &rest handler-forms)

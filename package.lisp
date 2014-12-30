@@ -1,6 +1,7 @@
 (defpackage :blackbird-base
   (:use :cl)
-  (:export #:*promise-keep-specials*
+  (:export #:*debug-on-error*
+           #:*promise-keep-specials*
            #:*promise-finish-hook*
 
            #:promise
