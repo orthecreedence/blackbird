@@ -215,6 +215,23 @@
     (is (eq val 9))
     (is (eq err nil))))
 
+(test debug-on-error
+  "Test that *debug-on-error* changes the way error handling operates."
+  (let ((blackbird:*debug-on-error* t)
+        err)
+    (handler-case
+      (with-promise (res rej)
+        (error "oh no"))
+      (error (e) (setf err e)))
+    (is (subtypep (type-of err) 'error) "when t"))
+  (let ((blackbird:*debug-on-error* nil)
+        err)
+    (catcher
+      (with-promise (res rej)
+        (error "oh no"))
+      (error (e) (setf err e)))
+    (is (subtypep (type-of err) 'error) "when nil")))
+
 (test tapping
   "Tap tap taparoo"
   (let ((tapped nil)
@@ -490,3 +507,4 @@
             (push (list :caught2 (type-of c)) log))))
     (is (equal '((:caught1 error) (:ok 42))
                (nreverse log)))))
+

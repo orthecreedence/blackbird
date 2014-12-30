@@ -1,5 +1,6 @@
 (defpackage :blackbird-test
   (:use :cl :fiveam :cl-async-base :cl-async-util :blackbird)
+  (:shadow blackbird:*debug-on-error*)
   (:export #:run-tests))
 (in-package :blackbird-test)
 

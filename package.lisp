@@ -49,7 +49,8 @@
 (defpackage :blackbird
   (:use :cl :blackbird-base :blackbird-syntax :blackbird-util)
   (:nicknames :bb)
-  (:export #:*promise-keep-specials*
+  (:export #:*debug-on-error*
+           #:*promise-keep-specials*
            #:*promise-finish-hook*
 
            #:promise
