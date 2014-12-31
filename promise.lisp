@@ -78,6 +78,7 @@
                       (funcall reject-fn e)
                       (return-from catcher)))))
         (funcall create-fn resolve-fn reject-fn)))
+    (vom:debug "create-promise: ~a" promise)
     promise))
 
 (defmacro with-promise ((resolve reject
@@ -106,22 +107,24 @@
 (defun do-promisify (fn &key name)
   "Turns any value or set of values into a promise, unless a promise is passed
    in which case it is returned."
-  (block catcher
-    (handler-bind
-        ((error (lambda (e)
-                  (unless *debug-on-error*
-                    (let ((promise (make-promise)))
-                      (signal-error promise e)
-                      (return-from catcher promise))))))
-      (let* ((vals (multiple-value-list (funcall fn)))
-             (promise (car vals)))
-        (if (promisep promise)
-            promise
-            (create-promise
-              (lambda (resolve reject)
-                (declare (ignore reject))
-                (apply resolve vals))
-              :name name))))))
+  (let ((promise (block catcher
+                   (handler-bind
+                       ((error (lambda (e)
+                                 (unless *debug-on-error*
+                                   (let ((promise (make-promise)))
+                                     (signal-error promise e)
+                                     (return-from catcher promise))))))
+                     (let* ((vals (multiple-value-list (funcall fn)))
+                            (promise (car vals)))
+                       (if (promisep promise)
+                           promise
+                           (create-promise
+                             (lambda (resolve reject)
+                               (declare (ignore reject))
+                               (apply resolve vals))
+                             :name name)))))))
+    (vom:debug "promisify: ~a" promise)
+    promise))
 
 (defmacro promisify (promise-gen)
   "Turns any value or set of values into a promise, unless a promise is passed
@@ -212,6 +215,7 @@
     (let ((new-promise (car values)))
       (funcall *promise-finish-hook*
         (lambda ()
+          (vom:debug "finish: ~a ~s" promise values)
           (cond ((promisep new-promise)
                  ;; set up the current promise to forward all callbacks/handlers/events
                  ;; to the new promise from now on.
@@ -231,6 +235,7 @@
    errback is added to the promise."
   (unless (or (promise-errored-p promise)
               (promise-finished-p promise))
+    (vom:debug "signal-error: ~a / ~a" promise condition)
     (when (promisep promise)
       (let ((forwarded-promise (lookup-forwarded-promise promise)))
         (setf (promise-error forwarded-promise) condition)
