@@ -48,6 +48,24 @@
               (let ((*promise-keep-specials* all-vars))
                 (progv vars vals (apply callback args))))))))
 
+(defmacro with-error-handling ((blockname &optional promise) error-fn &body body)
+  "Wraps some nice restarts around the bits of code that run our promises and
+   handles errors."
+  (let ((last-err (gensym "last-err")))
+    `(let ((,last-err nil))
+       (block ,blockname
+         (handler-bind
+             ((error (lambda (e)
+                       (setf ,last-err e)
+                       (unless *debug-on-error*
+                         (funcall ,error-fn e)))))
+           (restart-case
+             (progn ,@body)
+             (reject-promise ()
+               :report (lambda (s) (format s "Reject the promise ~a" ,promise))
+               (format *debug-io* "~&;; promise rejected~%")
+               (funcall ,error-fn ,last-err))))))))
+
 (defmethod print-object ((promise promise) s)
   (print-unreadable-object (promise s :type t :identity t)
     (when (promise-name promise)
@@ -71,13 +89,11 @@
   (let* ((promise (make-promise :name name))
          (resolve-fn (lambda (&rest vals) (apply 'finish (append (list promise) vals))))
          (reject-fn (lambda (condition) (signal-error promise condition))))
-    (block catcher
-      (handler-bind
-          ((error (lambda (e)
-                    (unless *debug-on-error*
-                      (funcall reject-fn e)
-                      (return-from catcher)))))
-        (funcall create-fn resolve-fn reject-fn)))
+    (with-error-handling (catcher promise)
+      (lambda (e)
+        (funcall reject-fn e)
+        (return-from catcher))
+      (funcall create-fn resolve-fn reject-fn))
     (vom:debug "create-promise: ~a" promise)
     promise))
 
@@ -107,22 +123,16 @@
 (defun do-promisify (fn &key name)
   "Turns any value or set of values into a promise, unless a promise is passed
    in which case it is returned."
-  (let ((promise (block catcher
-                   (handler-bind
-                       ((error (lambda (e)
-                                 (unless *debug-on-error*
-                                   (let ((promise (make-promise)))
-                                     (signal-error promise e)
-                                     (return-from catcher promise))))))
-                     (let* ((vals (multiple-value-list (funcall fn)))
-                            (promise (car vals)))
-                       (if (promisep promise)
-                           promise
-                           (create-promise
-                             (lambda (resolve reject)
-                               (declare (ignore reject))
-                               (apply resolve vals))
-                             :name name)))))))
+  (let ((promise (make-promise :name name)))
+    (with-error-handling (catcher promise)
+      (lambda (e)
+        (signal-error promise e)
+        (return-from catcher))
+      (let* ((vals (multiple-value-list (funcall fn)))
+             (new-promise (car vals)))
+        (if (promisep new-promise)
+            (setf promise new-promise)
+            (apply 'finish promise vals))))
     (vom:debug "promisify: ~a" promise)
     promise))
 
@@ -277,12 +287,10 @@
   (with-promise (resolve reject :resolve-fn resolve-fn)
     (attach-errback promise
       (lambda (e)
-        (block catcher
-          (handler-bind
-              ((error (lambda (e)
-                        (unless *debug-on-error*
-                          (return-from catcher (reject e))))))
-            (resolve (funcall handler-fn e))))))
+        (with-error-handler (catcher)
+          (lambda (e)
+            (return-from catcher (reject e)))
+          (resolve (funcall handler-fn e)))))
     (attach promise resolve-fn)))
 
 (defmacro catcher (promise-gen &rest handler-forms)
