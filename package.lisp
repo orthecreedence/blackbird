@@ -6,6 +6,7 @@
 
            #:promise
            #:promise-finished-p
+           #:reject-promise
            #:make-promise
            #:create-promise
            #:with-promise
