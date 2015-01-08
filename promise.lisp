@@ -89,10 +89,10 @@
   (let* ((promise (make-promise :name name))
          (resolve-fn (lambda (&rest vals) (apply 'finish (append (list promise) vals))))
          (reject-fn (lambda (condition) (signal-error promise condition))))
-    (with-error-handling (catcher promise)
+    (with-error-handling (errexit promise)
       (lambda (e)
         (funcall reject-fn e)
-        (return-from catcher))
+        (return-from errexit))
       (funcall create-fn resolve-fn reject-fn))
     (vom:debug "create-promise: ~a" promise)
     promise))
@@ -124,10 +124,10 @@
   "Turns any value or set of values into a promise, unless a promise is passed
    in which case it is returned."
   (let ((promise (make-promise :name name)))
-    (with-error-handling (catcher promise)
+    (with-error-handling (errexit promise)
       (lambda (e)
         (signal-error promise e)
-        (return-from catcher))
+        (return-from errexit))
       (let* ((vals (multiple-value-list (funcall fn)))
              (new-promise (car vals)))
         (if (promisep new-promise)
@@ -287,9 +287,9 @@
   (with-promise (resolve reject :resolve-fn resolve-fn)
     (attach-errback promise
       (lambda (e)
-        (with-error-handler (catcher)
+        (with-error-handling (errexit)
           (lambda (e)
-            (return-from catcher (reject e)))
+            (return-from errexit (reject e)))
           (resolve (funcall handler-fn e)))))
     (attach promise resolve-fn)))
 
