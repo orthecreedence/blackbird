@@ -151,3 +151,11 @@
          (declare (ignore ,ignore-var))
          ,@body))))
 
+(defmacro walk (&body body)
+  (let (last)
+    `(alet* ,(loop for (head . tail) on body
+                  when tail
+                  collect `(nil ,head)
+                  else do (setf last head))
+       ,last)))
+
