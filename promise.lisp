@@ -179,6 +179,7 @@
    added to the new promise-to if added to the promise-from."
   ;; a promise "returned" another promise. reattach the callbacks/errbacks from
   ;; the original promise onto the returned one
+  (setf promise-to (lookup-forwarded-promise promise-to))
   (dolist (cb (reverse (promise-callbacks promise-from)))
     (do-add-callback promise-to cb))
   (dolist (errback (reverse (promise-errbacks promise-from)))
@@ -337,7 +338,7 @@
           (lambda (&rest _)
             (declare (ignore _))
             (apply resolver args)))))))
-  
+
 
 (defmacro finally (promise-gen &body body)
   "Run the body form whether the given promise has a value or an error."
