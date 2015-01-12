@@ -508,3 +508,21 @@
     (is (equal '((:caught1 error) (:ok 42))
                (nreverse log)))))
 
+(test long-forward-chain
+  (multiple-value-bind (log)
+      (async-let ((log '()))
+        (let ((n 0))
+          (flet ((next-step ()
+                   (push (incf n) log)
+                   (bb:attach
+                    nil
+                    #'(lambda (x)
+                        (declare (ignore x))
+                        (with-promise (resolve reject)
+                          (as:with-delay ()
+                            (resolve)))))))
+            (bb:wait
+                (bb:wait (next-step)
+                  (next-step))
+              (next-step)))))
+    (is (equal '(1 2 3) (nreverse log)))))
