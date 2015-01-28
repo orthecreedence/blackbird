@@ -508,6 +508,19 @@
     (is (equal '((:caught1 error) (:ok 42))
                (nreverse log)))))
 
+(test attach-error-handle/delayed
+  (let ((err nil))
+    (as:with-event-loop ()
+      (bb:catcher
+        (attach (bb:create-promise
+                  (lambda (resolver rejecter)
+                    (as:delay resolver :event-cb rejecter)))
+          (lambda ()
+            (error "crap")))
+        (t (e) (setf err e))))
+    (format t "err: ~a~%" err)
+    (is (typep err 'error))))
+
 (test long-forward-chain
   (multiple-value-bind (log)
       (async-let ((log '()))
@@ -526,3 +539,4 @@
                   (next-step))
               (next-step)))))
     (is (equal '(1 2 3) (nreverse log)))))
+
