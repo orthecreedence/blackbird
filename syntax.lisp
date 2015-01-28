@@ -124,6 +124,7 @@
                                      binding))))
     `(attach ,promise-gen
        (lambda (&rest ,args)
+         (declare (ignorable ,args))
          (let (,@bindings)
            ;; ignore any nil bindings
            ,(when ignore-bindings
@@ -158,4 +159,3 @@
                   collect `(nil ,head)
                   else do (setf last head))
        ,last)))
-
