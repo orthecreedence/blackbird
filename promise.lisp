@@ -114,7 +114,7 @@
        (macrolet ((,resolve (&rest args)
                     (if (= 1 (length args))
                         `(apply ,',resolve-fn (multiple-value-list ,(car args)))
-                        `(apply ,',resolve-fn ',args))))
+                        `(funcall ,',resolve-fn ,@args))))
          (flet ((,reject (condition) (funcall ,reject-fn condition)))
            (declare (ignorable #',reject))
            ,@body)))
