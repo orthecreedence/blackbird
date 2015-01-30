@@ -304,7 +304,11 @@
      (lambda (e)
        (typecase e
          ,@(loop for x in handler-forms collect
-             (list (car x) `(let ((,(caadr x) e)) ,@(cddr x))))))))
+             (list (car x)
+                   (let ((bind (caadr x)))
+                     (if bind
+                         `(let ((,(caadr x) e)) ,@(cddr x))
+                         `(progn ,@(cddr x))))))))))
 
 (defun do-tap (promise tap-fn)
   "Gives a handler function access to a promise's value but finishes the
