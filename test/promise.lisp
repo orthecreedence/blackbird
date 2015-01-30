@@ -107,16 +107,16 @@
    that evaluates to multiple values."
   (let ((vals nil))
     (attach (with-promise (resolve reject)
-              (resolve 1 2 3))
+              (resolve 1 (list 1 2) 3))
       (lambda (&rest promise-vals)
         (setf vals promise-vals)))
-    (is (equalp vals '(1 2 3))))
+    (is (equalp vals '(1 (1 2) 3))))
   (let ((vals nil))
     (attach (with-promise (resolve reject)
-              (resolve (funcall (lambda () (values 1 2 3)))))
+              (resolve (funcall (lambda () (values 1 (list 1 2) 3)))))
       (lambda (&rest promise-vals)
         (setf vals promise-vals)))
-    (is (equalp vals '(1 2 3)))))
+    (is (equalp vals '(1 (1 2) 3)))))
 
 (test promise-alet
   "Test that the alet macro functions correctly"
