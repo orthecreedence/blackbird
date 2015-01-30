@@ -36,7 +36,8 @@
            #:aif
            #:multiple-promise-bind
            #:wait
-           #:walk))
+           #:walk
+           #:walk1))
 
 (defpackage :blackbird-util
   (:use :cl :blackbird-base :blackbird-syntax)
@@ -76,6 +77,7 @@
            #:multiple-promise-bind
            #:wait
            #:walk
+           #:walk1
 
            #:adolist
            #:amap

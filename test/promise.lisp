@@ -173,6 +173,33 @@
     (is (= res1 2))
     (is (= res2 4))))
 
+(test promise-walk
+  "Test walk macro"
+  (multiple-value-bind (vals)
+      (async-let ((vals nil))
+        (attach
+          (walk
+            (promise-gen (lambda () (push 1 vals)) :delay .2)
+            (promise-gen (lambda () (push 2 vals)) :delay .1)
+            (promise-gen (lambda () (values 1 2 3)) :delay .1))
+          (lambda (&rest v)
+            (push v vals))))
+    (is (equalp vals (list (list 1 2 3) 2 1)))))
+
+(test promise-walk1
+  "Test walk macro"
+  (multiple-value-bind (vals)
+      (async-let ((vals nil))
+        (attach
+          (walk1 (promise-gen (lambda () (values 3 2 1)) :delay .1)
+            (promise-gen (lambda () (push 1 vals)) :delay .2)
+            (promise-gen (lambda () (push 2 vals)) :delay .1)
+            (promise-gen (lambda () (push 3 vals)) :delay .1))
+          (lambda (&rest v)
+            (push v vals))))
+    (is (equalp vals (list (list 3 2 1) 3 2 1)))))
+
+
 (test forwarding
   "Test promise forwarding"
   (flet ((get-val ()
@@ -518,7 +545,6 @@
           (lambda ()
             (error "crap")))
         (t (e) (setf err e))))
-    (format t "err: ~a~%" err)
     (is (typep err 'error))))
 
 (test long-forward-chain

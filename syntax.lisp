@@ -153,9 +153,21 @@
          ,@body))))
 
 (defmacro walk (&body body)
+  "Treat each operation in body as a sequential, promise-returning operation and
+   then resolve the returned promise with the value(s) of the last operation in
+   body."
   (let (last)
     `(alet* ,(loop for (head . tail) on body
                   when tail
                   collect `(nil ,head)
                   else do (setf last head))
        ,last)))
+
+(defmacro walk1 (save-values-form &body body)
+  "Like walk, except returns the value(s) of the first form instead of the last."
+  (let ((tmp-vals (gensym "tmp-vals")))
+    `(attach ,save-values-form
+       (lambda (&rest ,tmp-vals)
+         (alet* ,(loop for form in body collect `(nil ,form))
+           (apply 'values ,tmp-vals))))))
+
