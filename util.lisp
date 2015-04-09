@@ -35,19 +35,21 @@
       (alet* ((promise-list promise-list)
               (vals (make-array (length promise-list)))
               (num-returned 0))
-        (loop for i from 0
-              for promise in promise-list do
-          (let ((idx i))
-            (catcher
-              (progn
-                (attach-errback promise (lambda (e) (reject e)))
-                (alet* ((val promise)
-                        (val (funcall function val)))
-                  (setf (aref vals idx) val)
-                  (incf num-returned)
-                  (when (<= (length vals) num-returned)
-                    (resolve (coerce vals 'list)))))
-              (condition (e) (reject e))))))
+        (if (null promise-list)
+            (resolve)
+            (loop for i from 0
+                  for promise in promise-list do
+                    (let ((idx i))
+                      (catcher
+                       (progn
+                         (attach-errback promise (lambda (e) (reject e)))
+                         (alet* ((val promise)
+                                 (val (funcall function val)))
+                           (setf (aref vals idx) val)
+                           (incf num-returned)
+                           (when (<= (length vals) num-returned)
+                             (resolve (coerce vals 'list)))))
+                       (condition (e) (reject e)))))))
       (condition (e) (reject e)))))
 
 (defun all (promise-list)
