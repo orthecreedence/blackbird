@@ -367,6 +367,15 @@
       (lambda (x) (setf res x)))
     (is (equalp res (list 8 9 10)))))
 
+(test amap-nil
+  "Test that amap will reslve with a nil list"
+  (let ((vals nil)
+        (res nil))
+    (attach
+      (amap (lambda (x) (with-promise (res rej) (res (+ x 5)))) vals)
+      (lambda (x) (declare (ignore x)) (setf res t)))
+    (is (eq res t))))
+
 (test all
   "Test waiting on a list of promises/vals"
   (let ((vals (with-promise (res rej)

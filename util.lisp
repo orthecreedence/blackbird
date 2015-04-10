@@ -36,7 +36,7 @@
               (vals (make-array (length promise-list)))
               (num-returned 0))
         (if (null promise-list)
-            (resolve)
+            (resolve nil)
             (loop for i from 0
                   for promise in promise-list do
                     (let ((idx i))
