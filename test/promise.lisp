@@ -575,3 +575,21 @@
               (next-step)))))
     (is (equal '(1 2 3) (nreverse log)))))
 
+(test forwarding-stops-finishing
+  "If promise A forwards to promise B, promise A can no longer be finished or
+   errored."
+  (let ((val nil))
+    (as:with-event-loop ()
+      (bb:chain (bb:with-promise (resolve reject)
+                  (as:with-delay (.1)
+                    (let ((promise (with-promise (res1 rej1)
+                                     (as:with-delay (.1)
+                                       (resolve 45)
+                                       (res1 12)))))
+                      (resolve promise))))
+        (:then (val1)
+          (unless val (setf val val1)))
+        (:catch (err)
+          (setf val err))))
+    (is (eq val 12))))
+

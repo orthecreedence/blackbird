@@ -222,7 +222,8 @@
   "Mark a promise as finished, along with all values it's finished with. If
    finished with another promise, forward the current promise to the new one."
   (unless (or (promise-finished-p promise)
-              (promise-errored-p promise))
+              (promise-errored-p promise)
+              (promise-forward-to promise))
     (let ((new-promise (car values)))
       (funcall *promise-finish-hook*
         (lambda ()
@@ -245,7 +246,8 @@
    they will be used to process the error, otherwise it will be stored until an
    errback is added to the promise."
   (unless (or (promise-errored-p promise)
-              (promise-finished-p promise))
+              (promise-finished-p promise)
+              (promise-forward-to promise))
     (vom:debug "signal-error: ~a / ~a" promise condition)
     (when (promisep promise)
       (let ((forwarded-promise (lookup-forwarded-promise promise)))
@@ -351,3 +353,4 @@
 (defmacro finally (promise-gen &body body)
   "Run the body form whether the given promise has a value or an error."
   `(do-finally (promisify ,promise-gen) (lambda () ,@body)))
+

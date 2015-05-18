@@ -1,7 +1,7 @@
 (asdf:defsystem blackbird
   :author "Andrew Danger Lyon <orthecreedence@gmail.com>"
   :license "MIT"
-  :version "0.5.0"
+  :version "0.5.1"
   :description "A promise implementation for Common Lisp."
   :depends-on (#:vom)
   :components
