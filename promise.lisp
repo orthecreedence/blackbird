@@ -221,39 +221,41 @@
 (defun finish (promise &rest values)
   "Mark a promise as finished, along with all values it's finished with. If
    finished with another promise, forward the current promise to the new one."
-  (unless (or (promise-finished-p promise)
-              (promise-errored-p promise)
-              (promise-forward-to promise))
-    (let ((new-promise (car values)))
-      (funcall *promise-finish-hook*
-        (lambda ()
-          (vom:debug "finish: ~a ~s" promise values)
-          (cond ((promisep new-promise)
-                 ;; set up the current promise to forward all callbacks/handlers/events
-                 ;; to the new promise from now on.
-                 (setup-promise-forward promise new-promise)
-                 ;; run the new promise
-                 (run-promise new-promise))
-                (t
-                 ;; just a normal finish, run the promise
-                 (setf (promise-finished promise) t
-                       (promise-values promise) values)
-                 (run-promise promise)))))
-      promise)))
+  (if (or (promise-finished-p promise)
+          (promise-errored-p promise)
+          (promise-forward-to promise))
+      (vom:debug "resolving an already-resolved promise: ~a" promise)
+      (let ((new-promise (car values)))
+        (funcall *promise-finish-hook*
+          (lambda ()
+            (vom:debug "finish: ~a ~s" promise values)
+            (cond ((promisep new-promise)
+                   ;; set up the current promise to forward all callbacks/handlers/events
+                   ;; to the new promise from now on.
+                   (setup-promise-forward promise new-promise)
+                   ;; run the new promise
+                   (run-promise new-promise))
+                  (t
+                   ;; just a normal finish, run the promise
+                   (setf (promise-finished promise) t
+                         (promise-values promise) values)
+                   (run-promise promise)))))
+        promise)))
 
 (defun signal-error (promise condition)
   "Signal that an error has happened on a promise. If the promise has errbacks,
    they will be used to process the error, otherwise it will be stored until an
    errback is added to the promise."
-  (unless (or (promise-errored-p promise)
-              (promise-finished-p promise)
-              (promise-forward-to promise))
-    (vom:debug "signal-error: ~a / ~a" promise condition)
-    (when (promisep promise)
-      (let ((forwarded-promise (lookup-forwarded-promise promise)))
-        (setf (promise-error forwarded-promise) condition)
-        (setf (promise-errored forwarded-promise) t)
-        (run-promise forwarded-promise)))))
+  (if (or (promise-errored-p promise)
+          (promise-finished-p promise)
+          (promise-forward-to promise))
+      (vom:debug "rejecting an already-resolved promise: ~a" promise)
+      (when (promisep promise)
+        (vom:debug "signal-error: ~a / ~a" promise condition)
+        (let ((forwarded-promise (lookup-forwarded-promise promise)))
+          (setf (promise-error forwarded-promise) condition)
+          (setf (promise-errored forwarded-promise) t)
+          (run-promise forwarded-promise)))))
 
 (defun reset-promise (promise)
   "Clear out all callbacks/errbacks. Useful for halting a promise's execution."
