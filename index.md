@@ -34,6 +34,7 @@ code is doing.
   - [multiple-promise-bind](#multiple-promise-bind) _macro_
   - [wait](#wait) _macro_
 - [Utils](#utils)
+  - [aeach](#aeach) _function_
   - [adolist](#adolist) _macro_
   - [amap](#amap) _function_
   - [all](#all) _function_
@@ -589,11 +590,26 @@ The following utility functions allow us to easily perform operations over lists
 of values/promises, or promises of lists of values/promises (it's turtles all
 the way down).
 
+<a id="aeach"></a>
+### aeach
+{% highlight cl %}
+(defun aeach (function promise-list))
+  => promise
+{% endhighlight %}
+
+Given a list of promises/values, waits for each promise in the list to resolve,
+calls `function` on the value(s) returned from the promise, and waits for the
+promise/value returned from the function. `aeach` does this in  *sequence* for
+each item in the promise-list.
+
+This is a great way to loop over items one-by-one, each one waiting for the
+previous to finish before continuing.
+
 <a id="adolist"></a>
 ### adolist
 {% highlight cl %}
 (defmacro adolist ((item items &optional promise-bind) &body body))
-  => new-promise
+  => promise
 {% endhighlight %}
 
 This macro allows looping over items in an async fashion. Since it can be tricky
@@ -658,7 +674,7 @@ on the promise returned from `amap`.
 ### all
 {% highlight cl %}
 (defun all (promise-list))
-  => new-promise
+  => promise
 {% endhighlight %}
 
 Waits on all of the given values in the `promise-list` to complete before
