@@ -355,6 +355,21 @@
 ;; -----------------------------------------------------------------------------
 ;; promise utils (map, reduce, etc)
 ;; -----------------------------------------------------------------------------
+(test aeach
+  "Test looping over items in sequence"
+  (multiple-value-bind (items)
+    (async-let ((items nil))
+      (let ((vals (list (cons 1 .6)
+                        (cons 2 .1)
+                        (promisify (cons 3 .3)))))
+        (aeach (lambda (x)
+                 (attach (promise-gen (lambda () (car x)) :delay (cdr x))
+                   (lambda (y)
+                     (push y items))))
+
+               vals)))
+    (is (equalp '(3 2 1) items))))
+
 (test amap
   "Test mapping over a list of vals/promises"
   (let ((vals (with-promise (res rej)

@@ -1,28 +1,35 @@
 (in-package :blackbird-util)
 
+(defun aeach (function promise-list)
+  "Given a function and a list of values/promises, runs the function on each
+   resolved promise *in sequence*."
+  (with-promise (resolve reject :name "each")
+    (labels ((next (promise-list)
+               (if (zerop (length promise-list))
+                   ;; all done
+                   (resolve)
+                   ;; grab the next promise/val off the list, resolve it, give
+                   ;; it to our heroic function, and wait for the return value/
+                   ;; promise (then continue)
+                   (catcher
+                     (attach (car promise-list)
+                       (lambda (&rest vals)
+                         (wait (apply function vals)
+                           (next (cdr promise-list)))))
+                     (condition (e) (reject e))))))
+      (next promise-list))))
+
 (defmacro adolist ((item items &optional promise-bind) &body body)
   "Async version of dolist, only continues loop when promise in final form
    finishes with a value."
-  (let ((items-sym (gensym "items"))
-        (promise-sym (gensym "promise"))
-        (next-fn (gensym "next-fn")))
-    `(let ((,items-sym ,items)
-           (,promise-sym (make-promise :name "adolist")))
-       (labels ((,next-fn ()
-                  (let ((,item (car ,items-sym)))
-                    (unless ,item
-                      (finish ,promise-sym nil)
-                      (return-from ,next-fn))
-                    (setf ,items-sym (cdr ,items-sym))
-                    (catcher
-                      ,(if promise-bind
-                           `(let ((,promise-bind (make-promise)))
-                              (wait ,promise-bind (,next-fn))
-                              ,@body)
-                           `(wait (progn ,@body) (,next-fn)))
-                      (t (e) (signal-error ,promise-sym e))))))
-         (,next-fn))
-       ,promise-sym)))
+  (when promise-bind
+    (format t "<WARN> blackbird: using adolists's third param (promise-bind) is deprecated.~%"))
+  (let ((rest-sym (gensym "resttt")))
+    `(aeach
+       (lambda (&rest ,rest-sym)
+         (let ((,item (car ,rest-sym)))
+           ,@body))
+       ,items)))
 
 (defun amap (function promise-list)
   "Run map over a list of promises/values, finishing the returned promise once

@@ -41,7 +41,8 @@
 
 (defpackage :blackbird-util
   (:use :cl :blackbird-base :blackbird-syntax)
-  (:export #:adolist
+  (:export #:aeach
+           #:adolist
            #:amap
            #:all
            #:areduce
@@ -79,6 +80,7 @@
            #:walk
            #:walk1
 
+           #:aeach
            #:adolist
            #:amap
            #:all
