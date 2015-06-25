@@ -634,13 +634,13 @@ Here are some toy examples:
 ;;   delay for 2  (2s pause)
 ;;   delay for 3  (3s pause)
 ;;   DONE!
-(wait-for (adolist (item '(1 2 3))
-            (mydelay item))
+(wait (adolist (item '(1 2 3))
+        (mydelay item))
   (format t "DONE!~%"))
 
 ;; to get more control over how the promise finishes, specify the promise-bind arg
 (adolist (item '(1 2 3) promise)
-  (wait-for (mydelay item)
+  (wait (mydelay item)
     ;; continue the loop explicitely
     (finish promise)))
 {% endhighlight %}
