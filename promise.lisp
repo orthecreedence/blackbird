@@ -156,7 +156,6 @@
         ;; return a promise that's fired with the return value of the error
         ;; handler
         (let ((forwarded-promise (lookup-forwarded-promise promise))
-              (new-promise (make-promise))
               (wrapped (if (consp errback)
                            errback
                            (cons new-promise errback))))
