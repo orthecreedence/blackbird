@@ -114,7 +114,7 @@
     - :finally"
   (flet ((transform-op (promise op)
            (case (car op)
-             ((or :then :attach)
+             ((:then :attach)
               `(multiple-promise-bind ,(cadr op) ,promise ,@(cddr op)))
              (:map
               `(amap (lambda ,(cadr op) ,@(cddr op)) ,promise))
@@ -125,7 +125,7 @@
               `(afilter (lambda ,(cadr op) ,@(cddr op)) ,promise))
              (:all
               `(all ,promise))
-             ((or :catch :catcher)
+             ((:catch :catcher)
               `(do-catch ,promise (lambda ,(cadr op) ,@(cddr op))))
              (:finally
               `(finally ,promise ,@(cdr op)))
