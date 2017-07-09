@@ -29,7 +29,7 @@ code is doing.
   - [finally](#finally) _macro_
 - [Nicer syntax](#nicer-syntax)
   - [alet](#alet) _macro_
-  - [alet*](#alet-star) _macro_
+  - [alet\*](#alet-star) _macro_
   - [aif](#aif) _macro_
   - [multiple-promise-bind](#multiple-promise-bind) _macro_
   - [wait](#wait) _macro_
@@ -87,7 +87,7 @@ tail position (remember, a callback has to return the promise from the next
 operation for this to work).
 
 This is all probably greek, so let's give an example (using
-[`cl-async`](http://orthecreedence.github.com/cl-async/) with the `as`
+[cl-async](http://orthecreedence.github.com/cl-async/) with the `as`
 nickname):
 
 {% highlight cl %}
