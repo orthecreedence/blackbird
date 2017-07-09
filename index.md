@@ -86,7 +86,9 @@ of CPS calls back to the top-level, assuming that your operations are in the
 tail position (remember, a callback has to return the promise from the next
 operation for this to work).
 
-This is all probably greek, so let's give an example:
+This is all probably greek, so let's give an example (using
+[`cl-async`](http://orthecreedence.github.com/cl-async/) with the `as`
+nickname):
 
 {% highlight cl %}
 (use-package :blackbird)
@@ -667,7 +669,7 @@ on the promise returned from `amap`.
           (promisify (+ x 7)))
         (promisify (list 1 2 (promisify 3))))
   (lambda (x)
-    (format t "x is: ~a~%" x)))  ; prints "x is (8 9 10)"
+    (format t "x is ~a~%" x)))  ; prints "x is (8 9 10)"
 {% endhighlight %}
 
 <a id="all"></a>
@@ -692,11 +694,52 @@ on the promise returned from `amap`.
 
 <a id="areduce"></a>
 ### areduce
-docs coming soon
+{% highlight cl %}
+(defun areduce (function promise-list &optional initial-value))
+  => promise
+{% endhighlight %}
+
+Runs over a list of values (or promises of values) and runs the given
+function on each value, while accumulating the result, similar to
+`reduce`.
+
+`initial-value` is being passed as the first accumulator argument, but
+note that it should not be a promise itself.  By default this is `nil`;
+the function will also not be called if there were zero elements in the
+list, instead the `initial-value` will be returned.
+
+In contrast to `amap` the function should also *not* be returning a
+promise itself (unless it's prepared to deal with it as an argument in
+the next iteration).
+
+{% highlight cl %}
+(attach
+  (areduce (lambda (acc x)
+             (+ acc x))
+           (promisify (list 1 2 (promisify 3)))
+           0)
+  (lambda (x)
+    (format t "x is ~a~%" x)))  ; prints "x is 6"
+{% endhighlight %}
 
 <a id="afilter"></a>
 ### afilter
-docs coming soon
+{% highlight cl %}
+(defun afilter (function promise-list))
+  => promise
+{% endhighlight %}
+
+Maps the function over a list of promises, or a promise of a list of
+promises and removes any `nil` values from the resulting list.
+
+{% highlight cl %}
+(attach
+  (afilter (lambda (x)
+             (and (evenp x) x))
+           (promisify (list 1 2 3)))
+  (lambda (x)
+    (format t "x is ~a~%" x)))  ; prints "x is (2)"
+{% endhighlight %}
 
 <a id="chain"></a>
 ### chain
