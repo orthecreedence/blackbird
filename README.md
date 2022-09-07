@@ -8,9 +8,9 @@ in a way that's natural to regular lisp programming. This is ideal for both
 writing drivers that can handle both blocking and non-blocking sockets, as well
 as various threading operations that have the concept of a delayed result.
 
-[Documentation](http://orthecreedence.github.com/blackbird)
+[Documentation](http://orthecreedence.github.io/blackbird)
 -----------------------------------------------------------------
-Check out the [blackbird doc site](http://orthecreedence.github.com/blackbird).
+Check out the [blackbird doc site](http://orthecreedence.github.io/blackbird).
 
 Tests
 -----
