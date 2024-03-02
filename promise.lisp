@@ -143,7 +143,7 @@
 
 (defun promisep (promise)
   "Is this a promise?"
-  (subtypep (type-of promise) 'promise))
+  (typep promise 'promise))
 
 (defun do-add-callback (promise cb)
   "Add a callback to a promise."
