@@ -87,7 +87,7 @@
    function which takes a condition object and signals the condition on the
    promise."
   (let* ((promise (make-promise :name name))
-         (resolve-fn (lambda (&rest vals) (apply 'finish (append (list promise) vals))))
+         (resolve-fn (lambda (&rest vals) (apply 'finish promise vals)))
          (reject-fn (lambda (condition) (signal-error promise condition))))
     (with-error-handling (errexit promise)
       (lambda (e)
@@ -143,7 +143,7 @@
 
 (defun promisep (promise)
   "Is this a promise?"
-  (subtypep (type-of promise) 'promise))
+  (typep promise 'promise))
 
 (defun do-add-callback (promise cb)
   "Add a callback to a promise."
